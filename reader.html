@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ZenReader</title>
+  <link rel="stylesheet" href="css/highlight-vs.css">
+  <link rel="stylesheet" href="css/reader.css">
+  <link id="google-fonts-link" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+</head>
+<body>
+  <!-- Toolbar -->
+  <div id="toolbar">
+    <div class="toolbar-left">
+      <img src="icons/icon48.png" alt="" class="toolbar-icon">
+      <h1 class="toolbar-title">ZenReader</h1>
+    </div>
+    <div class="toolbar-center">
+      <!-- Text font trigger -->
+      <button class="font-trigger" id="text-font-trigger" title="Text font settings">
+        <span class="font-trigger-label">Text:</span>
+        <span class="font-trigger-value" id="text-font-name">Inter</span>
+        <span class="font-trigger-arrow">&#9662;</span>
+      </button>
+
+      <!-- Code font trigger -->
+      <button class="font-trigger" id="code-font-trigger" title="Code font settings">
+        <span class="font-trigger-label">Code:</span>
+        <span class="font-trigger-value" id="code-font-name">JetBrains Mono</span>
+        <span class="font-trigger-arrow">&#9662;</span>
+      </button>
+    </div>
+    <div class="toolbar-right">
+      <button id="btn-print" title="Print">Print</button>
+      <button id="btn-pdf" title="Save as PDF">PDF</button>
+    </div>
+  </div>
+
+  <!-- Text font popover -->
+  <div class="font-popover" id="text-popover">
+    <div class="popover-row">
+      <label>Family</label>
+      <select id="font-select">
+        <optgroup label="Sans-serif">
+          <option value="Inter" selected>Inter</option>
+          <option value="IBM Plex Sans">IBM Plex Sans</option>
+          <option value="Source Sans 3">Source Sans 3</option>
+          <option value="Nunito">Nunito</option>
+          <option value="Lato">Lato</option>
+        </optgroup>
+        <optgroup label="Serif">
+          <option value="Merriweather">Merriweather</option>
+          <option value="Lora">Lora</option>
+          <option value="Crimson Text">Crimson Text</option>
+          <option value="Libre Baskerville">Libre Baskerville</option>
+          <option value="PT Serif">PT Serif</option>
+        </optgroup>
+      </select>
+    </div>
+    <div class="popover-row">
+      <label>Size</label>
+      <input type="range" id="font-size-range" min="12" max="24" value="16" step="1">
+      <span class="size-value" id="font-size-label">16px</span>
+    </div>
+    <div class="popover-row">
+      <label>Weight</label>
+      <div class="weight-group" id="text-weight-group">
+        <button class="weight-option active" data-weight="400">Regular</button>
+        <button class="weight-option" data-weight="500">Medium</button>
+        <button class="weight-option" data-weight="700">Bold</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Code font popover -->
+  <div class="font-popover" id="code-popover">
+    <div class="popover-row">
+      <label>Family</label>
+      <select id="code-font-select">
+        <option value="JetBrains Mono" selected>JetBrains Mono</option>
+        <option value="Fira Code">Fira Code</option>
+        <option value="Source Code Pro">Source Code Pro</option>
+      </select>
+    </div>
+    <div class="popover-row">
+      <label>Size</label>
+      <input type="range" id="code-size-range" min="9" max="18" value="13" step="0.5">
+      <span class="size-value" id="code-size-label">13px</span>
+    </div>
+    <div class="popover-row">
+      <label>Weight</label>
+      <div class="weight-group" id="code-weight-group">
+        <button class="weight-option active" data-weight="400">Regular</button>
+        <button class="weight-option" data-weight="500">Medium</button>
+        <button class="weight-option" data-weight="700">Bold</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PDF options dialog -->
+  <div id="pdf-dialog-overlay" class="dialog-overlay hidden">
+    <div class="dialog">
+      <h3>PDF Options</h3>
+      <div class="dialog-row">
+        <label>Margins (mm)</label>
+        <div class="margin-inputs">
+          <div class="margin-input-group">
+            <span class="margin-label">Top</span>
+            <input type="number" id="margin-top" value="15" min="0" max="50" step="1">
+          </div>
+          <div class="margin-input-group">
+            <span class="margin-label">Right</span>
+            <input type="number" id="margin-right" value="15" min="0" max="50" step="1">
+          </div>
+          <div class="margin-input-group">
+            <span class="margin-label">Bottom</span>
+            <input type="number" id="margin-bottom" value="15" min="0" max="50" step="1">
+          </div>
+          <div class="margin-input-group">
+            <span class="margin-label">Left</span>
+            <input type="number" id="margin-left" value="15" min="0" max="50" step="1">
+          </div>
+        </div>
+      </div>
+      <div class="dialog-row">
+        <label>Page size</label>
+        <select id="pdf-page-size">
+          <option value="a4" selected>A4</option>
+          <option value="letter">Letter</option>
+          <option value="legal">Legal</option>
+        </select>
+      </div>
+      <div class="dialog-actions">
+        <button id="pdf-cancel" class="dialog-btn-secondary">Cancel</button>
+        <button id="pdf-generate" class="dialog-btn-primary">Generate PDF</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Article content -->
+  <div id="reader-content">
+    <article id="article">
+      <header id="article-header">
+        <h1 id="article-title"></h1>
+        <p id="article-byline"></p>
+        <p id="article-source"></p>
+      </header>
+      <div id="article-body"></div>
+    </article>
+  </div>
+
+  <!-- Scripts -->
+  <script src="lib/highlight.min.js"></script>
+  <script src="lib/html2pdf.bundle.min.js"></script>
+  <script src="reader.js"></script>
+</body>
+</html>

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body {
+      width: 240px;
+      padding: 16px;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-size: 13px;
+      margin: 0;
+    }
+    h2 {
+      margin: 0 0 12px;
+      font-size: 15px;
+      font-weight: 600;
+    }
+    p {
+      margin: 0 0 12px;
+      color: #555;
+      line-height: 1.4;
+    }
+    button {
+      width: 100%;
+      padding: 10px;
+      font-size: 13px;
+      font-weight: 500;
+      background: #1a73e8;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    button:hover {
+      background: #1557b0;
+    }
+    .footer {
+      margin-top: 12px;
+      font-size: 11px;
+      color: #999;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <h2>ZenReader</h2>
+  <p>Extract and clean the current page for reading, printing, or PDF export.</p>
+  <button id="btn-extract">Extract Article</button>
+  <div class="footer">Hover elements in reader to remove them</div>
+  <script src="popup.js"></script>
+</body>
+</html>
