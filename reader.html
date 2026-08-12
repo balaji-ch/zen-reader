@@ -102,7 +102,14 @@
     <div class="dialog">
       <h3>PDF Options</h3>
       <div class="dialog-row">
-        <label>Margins (mm)</label>
+        <label>Margins</label>
+        <div class="margin-presets" id="margin-presets">
+          <button class="margin-preset-btn" data-preset="none">No Margin</button>
+          <button class="margin-preset-btn active" data-preset="minimal">Minimal</button>
+          <button class="margin-preset-btn" data-preset="custom">Custom</button>
+        </div>
+      </div>
+      <div class="dialog-row margin-custom-row hidden" id="margin-custom-row">
         <div class="margin-inputs">
           <div class="margin-input-group">
             <span class="margin-label">Top</span>

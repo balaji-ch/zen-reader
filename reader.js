@@ -132,11 +132,54 @@
     // Set content
     articleBody.innerHTML = articleData.content;
 
+    // Constrain small decorative/inline images (arrows, icons, etc.)
+    constrainDecorativeImages();
+
     // Process code blocks
     processCodeBlocks();
 
     // Make elements deletable
     makeDeletable();
+  }
+
+  // ===== Constrain decorative/inline images (arrows, bullets, small icons) =====
+  function constrainDecorativeImages() {
+    const images = articleBody.querySelectorAll('img');
+    images.forEach((img) => {
+      // Wait for image to load to check natural dimensions
+      const check = () => {
+        const natW = img.naturalWidth;
+        const natH = img.naturalHeight;
+        // If image has very small natural dimensions, it's likely a decorative icon
+        // (arrows, bullet points, section markers, emoji-like icons)
+        if (natW > 0 && natH > 0 && natW <= 40 && natH <= 40) {
+          img.style.display = 'inline';
+          img.style.verticalAlign = 'middle';
+          img.style.margin = '0 0.15em';
+          img.style.borderRadius = '0';
+          img.style.maxHeight = '1.2em';
+          img.style.width = 'auto';
+          img.style.maxWidth = 'none';
+        }
+        // Also handle slightly larger icons (up to ~64px) that are clearly not article images
+        // These often appear as section arrows or decorative separators
+        else if (natW > 0 && natH > 0 && natW <= 64 && natH <= 64) {
+          img.style.display = 'inline-block';
+          img.style.verticalAlign = 'middle';
+          img.style.margin = '0 0.25em';
+          img.style.borderRadius = '0';
+          img.style.maxHeight = '1.5em';
+          img.style.width = 'auto';
+          img.style.maxWidth = 'none';
+        }
+      };
+
+      if (img.complete && img.naturalWidth > 0) {
+        check();
+      } else {
+        img.addEventListener('load', check);
+      }
+    });
   }
 
   // ===== Process code blocks: detect language, add badges, highlight =====
@@ -246,7 +289,6 @@
     elements.forEach((el) => {
       if (el.closest('.code-block-wrapper')) return;
       el.setAttribute('data-deletable', '');
-      el.style.position = 'relative';
     });
 
     const deleteBtn = document.createElement('button');
@@ -258,6 +300,15 @@
 
     let hoveredEl = null;
 
+    articleBody.addEventListener('mouseenter', () => {
+      articleBody.classList.add('delete-hover-active');
+    });
+
+    articleBody.addEventListener('mouseleave', () => {
+      articleBody.classList.remove('delete-hover-active');
+      hideDeleteBtn();
+    });
+
     articleBody.addEventListener('mouseover', (e) => {
       const target = e.target.closest('[data-deletable]');
       if (!target || !articleBody.contains(target)) {
@@ -267,10 +318,6 @@
       if (target === hoveredEl) return;
       hoveredEl = target;
       showDeleteBtn(target);
-    });
-
-    articleBody.addEventListener('mouseleave', () => {
-      hideDeleteBtn();
     });
 
     deleteBtn.addEventListener('mouseenter', () => {
@@ -426,6 +473,37 @@
   const marginRightInput = document.getElementById('margin-right');
   const marginBottomInput = document.getElementById('margin-bottom');
   const marginLeftInput = document.getElementById('margin-left');
+  const marginPresets = document.getElementById('margin-presets');
+  const marginCustomRow = document.getElementById('margin-custom-row');
+
+  // Margin preset definitions (in mm)
+  const MARGIN_PRESETS = {
+    none: { top: 0, right: 0, bottom: 0, left: 0 },
+    minimal: { top: 5, right: 5, bottom: 5, left: 5 }
+  };
+
+  let activeMarginPreset = 'minimal';
+
+  // Handle margin preset button clicks
+  marginPresets.addEventListener('click', (e) => {
+    const btn = e.target.closest('.margin-preset-btn');
+    if (!btn) return;
+
+    const preset = btn.dataset.preset;
+    activeMarginPreset = preset;
+
+    // Update active state
+    marginPresets.querySelectorAll('.margin-preset-btn').forEach((b) => {
+      b.classList.toggle('active', b === btn);
+    });
+
+    // Show/hide custom margin inputs
+    if (preset === 'custom') {
+      marginCustomRow.classList.remove('hidden');
+    } else {
+      marginCustomRow.classList.add('hidden');
+    }
+  });
 
   // Show dialog on PDF button click
   btnPdf.addEventListener('click', () => {
@@ -465,12 +543,27 @@
     const element = document.getElementById('reader-content');
     const title = articleData ? articleData.title : 'Article';
 
-    // Read user selections from dialog
-    const mTop = parseInt(marginTopInput.value) || 15;
-    const mRight = parseInt(marginRightInput.value) || 15;
-    const mBottom = parseInt(marginBottomInput.value) || 15;
-    const mLeft = parseInt(marginLeftInput.value) || 15;
+    // Resolve margins based on selected preset
+    let mTop, mRight, mBottom, mLeft;
+    if (activeMarginPreset === 'custom') {
+      mTop = parseInt(marginTopInput.value) || 0;
+      mRight = parseInt(marginRightInput.value) || 0;
+      mBottom = parseInt(marginBottomInput.value) || 0;
+      mLeft = parseInt(marginLeftInput.value) || 0;
+    } else {
+      const preset = MARGIN_PRESETS[activeMarginPreset];
+      mTop = preset.top;
+      mRight = preset.right;
+      mBottom = preset.bottom;
+      mLeft = preset.left;
+    }
     const pageSize = pageSizeSelect.value || 'a4';
+
+    // Strip delete-hover visuals before rendering PDF
+    articleBody.classList.remove('delete-hover-active');
+    articleBody.querySelectorAll('[data-hovered]').forEach((el) => {
+      el.removeAttribute('data-hovered');
+    });
 
     // Temporarily wrap headings + next sibling to prevent orphan headings at page bottom
     const wrappers = wrapHeadingsWithContent(element);

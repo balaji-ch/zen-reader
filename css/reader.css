@@ -306,6 +306,48 @@ body {
   box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.15);
 }
 
+/* Margin preset segmented control */
+.margin-presets {
+  display: flex;
+  border: 1px solid var(--toolbar-border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.margin-preset-btn {
+  flex: 1;
+  padding: 7px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  border: none;
+  background: white;
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.15s, color 0.15s;
+  border-right: 1px solid var(--toolbar-border);
+}
+
+.margin-preset-btn:last-child {
+  border-right: none;
+}
+
+.margin-preset-btn:hover {
+  background: #f0f0f0;
+}
+
+.margin-preset-btn.active {
+  background: #343a40;
+  color: white;
+}
+
+.margin-preset-btn.active:hover {
+  background: #1d2124;
+}
+
+.margin-custom-row.hidden {
+  display: none;
+}
+
 .dialog-row select {
   width: 100%;
   padding: 6px 10px;
@@ -413,6 +455,27 @@ body {
   height: auto;
   border-radius: 4px;
   margin: 1em 0;
+}
+
+/* Inline/decorative images (arrows, icons, emoji-sized images) should stay inline
+   and not blow up to full width. Targets small images inside paragraphs, headings,
+   list items, and links — common on Medium/TDS for arrow icons and decorators. */
+#article-body p img,
+#article-body li img,
+#article-body a img,
+#article-body h1 img,
+#article-body h2 img,
+#article-body h3 img,
+#article-body h4 img,
+#article-body h5 img,
+#article-body h6 img,
+#article-body span img {
+  display: inline;
+  vertical-align: middle;
+  margin: 0 0.15em;
+  border-radius: 0;
+  max-height: 1.2em;
+  width: auto;
 }
 
 #article-body a {
@@ -560,8 +623,9 @@ pre[data-lang="json"] { border-left-color: #292929; }
 pre[data-lang="yaml"] { border-left-color: #cb171e; }
 .badge-yaml { background: #cb171e; }
 
-/* Hover-to-delete: subtle highlight on hovered element */
-#article-body [data-deletable][data-hovered] {
+/* Hover-to-delete: subtle highlight on hovered element.
+   Only show when the body has the deletable-hover-active class (mouse is over article) */
+#article-body.delete-hover-active [data-deletable][data-hovered] {
   outline: 1px dashed #dc354580;
   outline-offset: 2px;
   background: #dc354508;
