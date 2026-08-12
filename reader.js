@@ -5,6 +5,75 @@
   // ===== State =====
   let articleData = null;
 
+  // ===== Undo stack =====
+  const undoStack = [];
+  const MAX_UNDO = 50;
+
+  function pushUndo(action) {
+    undoStack.push(action);
+    if (undoStack.length > MAX_UNDO) undoStack.shift();
+  }
+
+  function performUndo() {
+    if (undoStack.length === 0) {
+      showToast('Nothing to undo');
+      return;
+    }
+    const action = undoStack.pop();
+    switch (action.type) {
+      case 'delete': {
+        // Re-insert the removed element(s) at their original positions
+        action.items.forEach((item) => {
+          if (item.nextSibling && item.parent.contains(item.nextSibling)) {
+            item.parent.insertBefore(item.element, item.nextSibling);
+          } else if (item.parent) {
+            item.parent.appendChild(item.element);
+          }
+        });
+        showToast('Undo: restored ' + action.items.length + ' element' + (action.items.length > 1 ? 's' : ''));
+        break;
+      }
+      case 'edit': {
+        // Restore original innerHTML
+        action.element.innerHTML = action.oldHTML;
+        showToast('Undo: text reverted');
+        break;
+      }
+      case 'resize': {
+        // Restore original width/maxWidth for each image
+        action.items.forEach((item) => {
+          item.element.style.width = item.oldWidth;
+          item.element.style.maxWidth = item.oldMaxWidth;
+        });
+        showToast('Undo: image resize reverted');
+        break;
+      }
+      case 'cleanup': {
+        // Re-insert all cleaned-up elements
+        action.items.forEach((item) => {
+          if (item.nextSibling && item.parent.contains(item.nextSibling)) {
+            item.parent.insertBefore(item.element, item.nextSibling);
+          } else if (item.parent) {
+            item.parent.appendChild(item.element);
+          }
+        });
+        showToast('Undo: restored ' + action.items.length + ' cleaned element' + (action.items.length > 1 ? 's' : ''));
+        break;
+      }
+    }
+  }
+
+  // Global Ctrl+Z handler
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+      // Don't intercept if user is editing text (contenteditable)
+      const active = document.activeElement;
+      if (active && active.getAttribute('contenteditable') === 'true') return;
+      e.preventDefault();
+      performUndo();
+    }
+  });
+
   // ===== DOM refs =====
   const articleTitle = document.getElementById('article-title');
   const articleByline = document.getElementById('article-byline');
@@ -140,6 +209,15 @@
 
     // Make elements deletable
     makeDeletable();
+
+    // Make text editable on double-click
+    makeEditable();
+
+    // Make images resizable
+    makeImagesResizable();
+
+    // Show hints toast
+    showHintsToast();
   }
 
   // ===== Constrain decorative/inline images (arrows, bullets, small icons) =====
@@ -221,8 +299,7 @@
           }
         }
 
-        // Add language badge
-        addLanguageBadge(pre, lang);
+
       } else {
         // Plain code block - no badge, default blue border
         if (!code.querySelector('.hljs-keyword, .hljs-string, .hljs-comment')) {
@@ -231,7 +308,7 @@
             code.innerHTML = result.value;
             lang = result.language;
             pre.setAttribute('data-lang', lang);
-            addLanguageBadge(pre, lang);
+
           }
         }
       }
@@ -266,21 +343,7 @@
     return map[lang] || lang;
   }
 
-  function addLanguageBadge(pre, lang) {
-    const skipLangs = ['text', 'plain', 'output', 'none', ''];
-    if (skipLangs.includes(lang)) return;
 
-    const badge = document.createElement('span');
-    badge.className = `code-lang-badge badge-${lang}`;
-    badge.textContent = lang;
-
-    const wrapper = document.createElement('div');
-    wrapper.style.position = 'relative';
-    wrapper.style.marginTop = '24px';
-    pre.parentNode.insertBefore(wrapper, pre);
-    wrapper.appendChild(badge);
-    wrapper.appendChild(pre);
-  }
 
   // ===== Click-to-delete (hover X button) =====
   function makeDeletable() {
@@ -294,7 +357,7 @@
     const deleteBtn = document.createElement('button');
     deleteBtn.className = 'reader-delete-btn';
     deleteBtn.innerHTML = '&times;';
-    deleteBtn.title = 'Remove this element';
+    deleteBtn.title = 'Remove element (Shift+click: remove all similar)';
     deleteBtn.style.display = 'none';
     document.body.appendChild(deleteBtn);
 
@@ -304,7 +367,9 @@
       articleBody.classList.add('delete-hover-active');
     });
 
-    articleBody.addEventListener('mouseleave', () => {
+    articleBody.addEventListener('mouseleave', (e) => {
+      // Don't hide if the mouse is moving to the delete button
+      if (e.relatedTarget === deleteBtn || deleteBtn.contains(e.relatedTarget)) return;
       articleBody.classList.remove('delete-hover-active');
       hideDeleteBtn();
     });
@@ -324,7 +389,9 @@
       deleteBtn.style.display = 'flex';
     });
 
-    deleteBtn.addEventListener('mouseleave', () => {
+    deleteBtn.addEventListener('mouseleave', (e) => {
+      // Don't hide if the mouse is moving back to a deletable element inside articleBody
+      if (e.relatedTarget && articleBody.contains(e.relatedTarget)) return;
       hideDeleteBtn();
     });
 
@@ -332,13 +399,48 @@
       e.preventDefault();
       e.stopPropagation();
       if (hoveredEl) {
-        hoveredEl.classList.add('deleting');
         const elToRemove = hoveredEl;
         hoveredEl = null;
         hideDeleteBtn();
-        setTimeout(() => {
-          elToRemove.remove();
-        }, 200);
+
+        if (e.shiftKey) {
+          // Grouped deletion: find and remove all similar elements
+          const similar = findSimilarElements(elToRemove);
+          const total = similar.length + 1;
+          // Record undo info before removing
+          const allEls = [elToRemove, ...similar];
+          const undoItems = allEls.map((el) => ({
+            element: el,
+            parent: el.parentNode,
+            nextSibling: el.nextSibling
+          }));
+          pushUndo({ type: 'delete', items: undoItems });
+
+          elToRemove.classList.add('deleting');
+          similar.forEach((s) => s.classList.add('deleting'));
+          setTimeout(() => {
+            allEls.forEach((el) => {
+              el.classList.remove('deleting');
+              el.remove();
+            });
+          }, 200);
+          if (similar.length > 0) {
+            showToast(`Removed ${total} similar elements (Ctrl+Z to undo)`);
+          }
+        } else {
+          // Record undo info
+          pushUndo({ type: 'delete', items: [{
+            element: elToRemove,
+            parent: elToRemove.parentNode,
+            nextSibling: elToRemove.nextSibling
+          }]});
+
+          elToRemove.classList.add('deleting');
+          setTimeout(() => {
+            elToRemove.classList.remove('deleting');
+            elToRemove.remove();
+          }, 200);
+        }
       }
     });
 
@@ -358,6 +460,282 @@
       }
       hoveredEl = null;
     }
+  }
+
+  // ===== Double-click to edit text =====
+  function makeEditable() {
+    articleBody.addEventListener('dblclick', (e) => {
+      const target = e.target.closest('p, h1, h2, h3, h4, h5, h6, li, blockquote, td, th');
+      if (!target || !articleBody.contains(target)) return;
+      if (target.closest('pre') || target.closest('.code-block-wrapper')) return;
+      if (target.getAttribute('contenteditable') === 'true') return;
+
+      // Save original content for undo
+      const originalHTML = target.innerHTML;
+
+      target.setAttribute('contenteditable', 'true');
+      target.classList.add('reader-editing');
+      target.focus();
+
+      // Select all text in the element for easy replacement
+      const range = document.createRange();
+      range.selectNodeContents(target);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+
+      function exitEdit() {
+        target.removeAttribute('contenteditable');
+        target.classList.remove('reader-editing');
+        target.removeEventListener('blur', onBlur);
+        target.removeEventListener('keydown', onKeydown);
+        // Push undo only if content actually changed
+        if (target.innerHTML !== originalHTML) {
+          pushUndo({ type: 'edit', element: target, oldHTML: originalHTML });
+        }
+      }
+
+      function onBlur() {
+        exitEdit();
+      }
+
+      function onKeydown(ev) {
+        if (ev.key === 'Escape') {
+          ev.preventDefault();
+          // Restore original on Escape
+          target.innerHTML = originalHTML;
+          target.blur();
+        }
+      }
+
+      target.addEventListener('blur', onBlur);
+      target.addEventListener('keydown', onKeydown);
+    });
+  }
+
+  // ===== Image resize =====
+  function makeImagesResizable() {
+    let selectedImages = new Set();
+    let resizeBar = null;
+
+    function createResizeBar() {
+      resizeBar = document.createElement('div');
+      resizeBar.className = 'image-resize-bar';
+      resizeBar.innerHTML = `
+        <span class="resize-bar-label">Resize:</span>
+        <button data-size="25">25%</button>
+        <button data-size="50">50%</button>
+        <button data-size="75">75%</button>
+        <button data-size="100">100%</button>
+        <button data-size="original">Original</button>
+        <span class="resize-bar-divider"></span>
+        <span class="resize-bar-count"></span>
+      `;
+      resizeBar.style.display = 'none';
+      document.body.appendChild(resizeBar);
+
+      resizeBar.addEventListener('click', (e) => {
+        const btn = e.target.closest('button[data-size]');
+        if (!btn) return;
+        const size = btn.dataset.size;
+        // Record undo info before resizing
+        const undoItems = [];
+        selectedImages.forEach((img) => {
+          undoItems.push({
+            element: img,
+            oldWidth: img.style.width,
+            oldMaxWidth: img.style.maxWidth
+          });
+          if (size === 'original') {
+            img.style.width = '';
+            img.style.maxWidth = '100%';
+          } else {
+            img.style.width = size + '%';
+            img.style.maxWidth = 'none';
+          }
+        });
+        pushUndo({ type: 'resize', items: undoItems });
+        // Keep selection to allow further resizing
+        updateResizeBar();
+      });
+
+      return resizeBar;
+    }
+
+    function updateResizeBar() {
+      if (!resizeBar) createResizeBar();
+      if (selectedImages.size === 0) {
+        resizeBar.style.display = 'none';
+        return;
+      }
+      resizeBar.style.display = 'flex';
+      const countEl = resizeBar.querySelector('.resize-bar-count');
+      countEl.textContent = selectedImages.size + ' image' + (selectedImages.size > 1 ? 's' : '') + ' selected';
+
+      // Position the bar near the top of viewport
+      resizeBar.style.top = '52px';
+      resizeBar.style.left = '50%';
+      resizeBar.style.transform = 'translateX(-50%)';
+    }
+
+    function selectImage(img) {
+      selectedImages.add(img);
+      img.classList.add('image-selected');
+      updateResizeBar();
+    }
+
+    function deselectImage(img) {
+      selectedImages.delete(img);
+      img.classList.remove('image-selected');
+      updateResizeBar();
+    }
+
+    function clearSelection() {
+      selectedImages.forEach((img) => img.classList.remove('image-selected'));
+      selectedImages.clear();
+      updateResizeBar();
+    }
+
+    articleBody.addEventListener('click', (e) => {
+      const img = e.target.closest('#article-body img');
+      if (!img) {
+        // Click outside image — clear unless Ctrl held
+        if (!e.ctrlKey && !e.metaKey) {
+          clearSelection();
+        }
+        return;
+      }
+
+      // Prevent deselecting when clicking on a selected image without Ctrl
+      e.preventDefault();
+      e.stopPropagation();
+
+      if (e.ctrlKey || e.metaKey) {
+        // Toggle selection
+        if (selectedImages.has(img)) {
+          deselectImage(img);
+        } else {
+          selectImage(img);
+        }
+      } else {
+        // Single select — clear others
+        clearSelection();
+        selectImage(img);
+      }
+    });
+
+    // Clear selection on Escape
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && selectedImages.size > 0) {
+        clearSelection();
+      }
+    });
+  }
+
+  // ===== Grouped deletion (Shift+click) =====
+  function findSimilarElements(el) {
+    const text = el.textContent.trim();
+    if (text.length > 80) return []; // Only group short elements
+    const tag = el.tagName;
+    const candidates = articleBody.querySelectorAll(tag + '[data-deletable]');
+    const similar = [];
+    candidates.forEach((candidate) => {
+      if (candidate === el) return;
+      const cText = candidate.textContent.trim();
+      if (cText.length > 80) return;
+      // Exact match or very similar (same normalized text)
+      const normalize = (s) => s.toLowerCase().replace(/\s+/g, ' ').trim();
+      if (normalize(cText) === normalize(text)) {
+        similar.push(candidate);
+      }
+    });
+    return similar;
+  }
+
+  // ===== Cleanup button =====
+  const btnCleanup = document.getElementById('btn-cleanup');
+  btnCleanup.addEventListener('click', () => {
+    const noisePatterns = [
+      /click\s*(below\s*)?to\s*(see\s*)?full\s*size/i,
+      /click\s*(here\s*)?to\s*view\s*(in\s*)?full/i,
+      /tap\s*to\s*(view|see|expand)/i,
+      /image\s*by\s*author/i,
+      /source:\s*author/i,
+      /click\s*(to\s*)?(enlarge|expand|zoom)/i,
+      /full[\s-]?size\s*image/i,
+      /click\s*for\s*larger\s*(image|view)/i,
+      /view\s*larger/i,
+    ];
+
+    const candidates = articleBody.querySelectorAll('p, figcaption, span, em, small');
+    const toRemove = [];
+
+    candidates.forEach((el) => {
+      const text = el.textContent.trim();
+      if (text.length > 100) return; // Only target short noise
+      for (const pattern of noisePatterns) {
+        if (pattern.test(text)) {
+          toRemove.push(el);
+          break;
+        }
+      }
+    });
+
+    if (toRemove.length > 0) {
+      // Record undo info
+      const undoItems = toRemove.map((el) => ({
+        element: el,
+        parent: el.parentNode,
+        nextSibling: el.nextSibling
+      }));
+      pushUndo({ type: 'cleanup', items: undoItems });
+
+      toRemove.forEach((el) => el.classList.add('deleting'));
+      setTimeout(() => {
+        toRemove.forEach((el) => {
+          el.classList.remove('deleting');
+          el.remove();
+        });
+      }, 200);
+    }
+
+    // Show feedback
+    showToast(toRemove.length > 0
+      ? `Removed ${toRemove.length} noisy element${toRemove.length > 1 ? 's' : ''} (Ctrl+Z to undo)`
+      : 'No noise patterns found');
+  });
+
+  // ===== Toast notification =====
+  function showToast(message, duration = 2500) {
+    const toast = document.createElement('div');
+    toast.className = 'reader-toast';
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    // Trigger animation
+    requestAnimationFrame(() => toast.classList.add('visible'));
+    setTimeout(() => {
+      toast.classList.remove('visible');
+      setTimeout(() => toast.remove(), 300);
+    }, duration);
+  }
+
+  // ===== Hints toast on first load =====
+  function showHintsToast() {
+    const hints = [
+      'Double-click text to edit',
+      'Shift+click delete to remove all similar',
+      'Click image to resize (Ctrl+click for multiple)',
+      'Ctrl+Z to undo',
+    ];
+    const toast = document.createElement('div');
+    toast.className = 'reader-hints-toast';
+    toast.innerHTML = '<strong>Tips:</strong> ' + hints.join(' &bull; ');
+    document.body.appendChild(toast);
+    requestAnimationFrame(() => toast.classList.add('visible'));
+    setTimeout(() => {
+      toast.classList.remove('visible');
+      setTimeout(() => toast.remove(), 300);
+    }, 15000);
   }
 
   // ===== Font controls =====
@@ -559,11 +937,21 @@
     }
     const pageSize = pageSizeSelect.value || 'a4';
 
-    // Strip delete-hover visuals before rendering PDF
+    // Strip interactive visuals before rendering PDF
     articleBody.classList.remove('delete-hover-active');
     articleBody.querySelectorAll('[data-hovered]').forEach((el) => {
       el.removeAttribute('data-hovered');
     });
+    articleBody.querySelectorAll('.reader-editing').forEach((el) => {
+      el.removeAttribute('contenteditable');
+      el.classList.remove('reader-editing');
+    });
+    articleBody.querySelectorAll('.image-selected').forEach((el) => {
+      el.classList.remove('image-selected');
+    });
+    // Hide resize bar during PDF
+    const resizeBarEl = document.querySelector('.image-resize-bar');
+    if (resizeBarEl) resizeBarEl.style.display = 'none';
 
     // Temporarily wrap headings + next sibling to prevent orphan headings at page bottom
     const wrappers = wrapHeadingsWithContent(element);
