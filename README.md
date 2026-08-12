@@ -1,12 +1,12 @@
 # ZenReader
 
-A Chrome extension that transforms cluttered web articles into a clean, distraction-free reading experience with PDF export.
+A Chrome extension that transforms cluttered web articles into a clean, distraction-free reading experience with native PDF export.
 
 ## Features
 
 - **Article extraction** — Uses Mozilla Readability to strip ads, navigation, and clutter from any article
 - **Syntax highlighting** — Code blocks are highlighted with language-specific colored left borders (Python, C++, Rust, JS, etc.)
-- **PDF export** — Generate PDFs with configurable margins (per-side, in mm), page size selection (A4/Letter/Legal), and automatic bookmarks from headings
+- **Native PDF export** — Generates real PDFs via Chrome's printing engine with selectable text, searchable content, preserved links, PDF bookmarks/outline from headings, and tagged/accessible output
 - **Custom fonts** — Adjust body and code font family, size, and weight from the toolbar
 - **Inline text editing** — Double-click any paragraph or heading to edit text directly
 - **Element removal** — Hover over any paragraph, image, or block to delete it with the red X button
@@ -36,7 +36,7 @@ A Chrome extension that transforms cluttered web articles into a clean, distract
 
 ### From release ZIP
 
-1. Download `zen-reader-v1.1.0.zip` from [Releases](https://github.com/balaji-ch/zen-reader/releases)
+1. Download `zen-reader-v1.2.0.zip` from [Releases](https://github.com/balaji-ch/zen-reader/releases)
 2. Extract to a folder
 3. Load unpacked in Chrome as described above
 
@@ -61,9 +61,9 @@ A Chrome extension that transforms cluttered web articles into a clean, distract
 
 A hints toast appears on load with a summary of these shortcuts (visible for 15 seconds).
 
-## PDF Options
+## PDF Export
 
-When you click the PDF button, a dialog appears with:
+When you click the **PDF** button, a dialog appears with:
 
 | Setting | Description |
 |---------|-------------|
@@ -71,39 +71,50 @@ When you click the PDF button, a dialog appears with:
 | Page size | A4, Letter, or Legal |
 
 The generated PDF includes:
-- Bookmarks/outline from article headings (H1-H4)
-- Page-break protection (headings kept with content, code blocks don't split)
+
+- **Selectable and searchable text**
+- **Preserved hyperlinks**
+- **Preserved images**
+- **PDF bookmarks/outline** built from article headings (H1-H6)
+- **Tagged PDF** for accessibility (screen reader friendly)
+- **Smart page breaks** — headings kept with content, images don't split across pages
 - All edits, deletions, and image resizes reflected in the output
 
-## Print / PDF Notes
+The PDF is generated using Chrome's native printing engine via the DevTools Protocol (`Page.printToPDF`), producing the same quality as "Save as PDF" from the print dialog but with automatic bookmarks and tagged structure.
 
-- **Print dialog (Ctrl+P / Print button):** Uses the browser's print engine. Fonts render via Google Fonts. "Save as PDF" in the print dialog embeds font glyphs and produces selectable text.
-- **PDF button (html2pdf.js):** Rasterizes the page (image-based PDF). Text is not selectable, but fonts always render correctly regardless of system fonts. Bookmarks are included.
-- **All changes reflected:** Edited text, deleted elements, and resized images all appear in both print and PDF output. Interactive UI elements (resize bar, delete button, selection outlines) are automatically hidden.
+> **Note:** When the PDF is generated, Chrome briefly shows a "debugging started" notification bar. This is expected — the extension uses the Chrome Debugger API to access the native PDF renderer.
+
+## Permissions
+
+| Permission | Reason |
+|------------|--------|
+| `activeTab` | Access the current page to extract article content |
+| `storage` | Persist font preferences and pass article data to the reader |
+| `scripting` | Inject the Readability content script into pages |
+| `debugger` | Attach to the reader tab to call Chrome's native `Page.printToPDF` |
+| `downloads` | Save the generated PDF file to disk |
 
 ## Known Limitations
 
-- **PDF is image-based, not text-based.** The PDF export uses html2pdf.js (html2canvas + jsPDF), which rasterizes the page. Text is not selectable or searchable. Use the **Print** button for selectable text (but without bookmarks).
 - **Cannot extract from restricted pages.** Chrome prevents content script injection on `chrome://`, `edge://`, `chrome-extension://`, Chrome Web Store pages, and `file://` URLs.
 - **Math rendering (MathJax/KaTeX) is not supported.** Articles with LaTeX math notation will show raw math source rather than rendered equations.
-- **Very long articles may produce large PDFs.** Since the PDF is image-based at 2x scale, articles with many pages can result in large file sizes.
+- **Debugger notification.** Chrome shows a brief "started debugging this browser" bar during PDF generation. This is a Chrome security measure and cannot be suppressed by extensions.
 
 ## Project Structure
 
 ```
 zen-reader/
 ├── manifest.json          # Extension manifest (MV3)
-├── background.js          # Service worker
+├── background.js          # Service worker + PDF generation via chrome.debugger
 ├── content.js             # Article extraction (injected into pages)
 ├── popup.html / popup.js  # Extension popup
-├── reader.html / reader.js # Reader view + PDF generation
+├── reader.html / reader.js # Reader view + PDF export trigger
 ├── css/
-│   ├── reader.css         # All styling (reader, toolbar, dialog, page-breaks)
+│   ├── reader.css         # All styling (reader, toolbar, dialog, print styles)
 │   └── highlight-vs.css   # VS-style syntax theme
 ├── lib/
 │   ├── Readability.js     # Mozilla Readability
-│   ├── highlight.min.js   # highlight.js
-│   └── html2pdf.bundle.min.js  # html2pdf.js (html2canvas + jsPDF)
+│   └── highlight.min.js   # highlight.js
 └── icons/                 # Extension icons (16/48/128px)
 ```
 
@@ -115,16 +126,6 @@ If you need to regenerate icons from the source SVG:
 npm install
 node generate-icons.js
 ```
-
-## About .crx files
-
-Chrome extensions distributed through the Chrome Web Store are packaged as signed `.crx` files by Google. For sideloading (developer use), Chrome requires loading the unpacked source directory directly. Standalone `.crx` installs are blocked by Chrome unless enterprise-managed.
-
-To pack a `.crx` manually (not needed for normal use):
-1. Go to `chrome://extensions`
-2. Click **Pack extension**
-3. Select this directory as the root
-4. Chrome generates a `.crx` and a `.pem` key file (keep the `.pem` private)
 
 ## License
 

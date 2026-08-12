@@ -95,6 +95,7 @@
   const codePopover = document.getElementById('code-popover');
   const btnPrint = document.getElementById('btn-print');
   const btnPdf = document.getElementById('btn-pdf');
+  const btnTips = document.getElementById('btn-tips');
   const googleFontsLink = document.getElementById('google-fonts-link');
 
   // ===== Popover logic =====
@@ -721,21 +722,60 @@
 
   // ===== Hints toast on first load =====
   function showHintsToast() {
-    const hints = [
-      'Double-click text to edit',
-      'Shift+click delete to remove all similar',
-      'Click image to resize (Ctrl+click for multiple)',
-      'Ctrl+Z to undo',
-    ];
-    const toast = document.createElement('div');
-    toast.className = 'reader-hints-toast';
-    toast.innerHTML = '<strong>Tips:</strong> ' + hints.join(' &bull; ');
-    document.body.appendChild(toast);
-    requestAnimationFrame(() => toast.classList.add('visible'));
+    showHintCards();
+  }
+
+  const HINTS = [
+    'Double-click text to edit',
+    'Hover + red X to delete elements',
+    'Shift+click delete to remove all similar',
+    'Click image to resize (Ctrl+click for multiple)',
+    'Ignore the "debugging started" warning during PDF export',
+  ];
+
+  function showHintCards() {
+    // Remove any existing hint card
+    const existing = document.querySelector('.reader-hints-card');
+    if (existing) {
+      existing.classList.add('hint-explode');
+      existing.addEventListener('animationend', () => existing.remove());
+      return;
+    }
+
+    const card = document.createElement('div');
+    card.className = 'reader-hints-card';
+
+    const header = document.createElement('div');
+    header.className = 'hints-card-header';
+    header.innerHTML = `<span class="hints-card-title">\u{1F4A1} Tips</span><button class="hint-close" aria-label="Close">\u00D7</button>`;
+    card.appendChild(header);
+
+    const list = document.createElement('ul');
+    list.className = 'hints-card-list';
+    HINTS.forEach((hint, i) => {
+      const li = document.createElement('li');
+      li.className = `hint-item hint-item-${i + 1}`;
+      li.textContent = hint;
+      list.appendChild(li);
+    });
+    card.appendChild(list);
+
+    // Close button - explode animation
+    header.querySelector('.hint-close').addEventListener('click', () => {
+      card.classList.add('hint-explode');
+      card.addEventListener('animationend', () => card.remove());
+    });
+
+    document.body.appendChild(card);
+    requestAnimationFrame(() => card.classList.add('visible'));
+
+    // Auto-dismiss after 7 seconds
     setTimeout(() => {
-      toast.classList.remove('visible');
-      setTimeout(() => toast.remove(), 300);
-    }, 15000);
+      if (document.body.contains(card) && !card.classList.contains('hint-explode')) {
+        card.classList.add('hint-explode');
+        card.addEventListener('animationend', () => card.remove());
+      }
+    }, 7000);
   }
 
   // ===== Font controls =====
@@ -842,7 +882,26 @@
     window.print();
   });
 
-  // ===== PDF Export with bookmarks =====
+  // Tips button - re-show hint cards
+  btnTips.addEventListener('click', () => {
+    showHintCards();
+  });
+
+  // ===== Toolbar auto-fade after inactivity =====
+  const toolbar = document.getElementById('toolbar');
+  const TOOLBAR_FADE_DELAY = 10000; // 10 seconds
+
+  // Fade after initial timeout; only hovering the toolbar restores it
+  setTimeout(() => {
+    const dialogEl = document.getElementById('pdf-dialog-overlay');
+    const popoverOpen = document.querySelector('.font-popover.active') ||
+                        (dialogEl && !dialogEl.classList.contains('hidden'));
+    if (!popoverOpen) {
+      toolbar.classList.add('faded');
+    }
+  }, TOOLBAR_FADE_DELAY);
+
+  // ===== PDF Export via Chrome DevTools Protocol =====
   const pdfDialogOverlay = document.getElementById('pdf-dialog-overlay');
   const pdfCancelBtn = document.getElementById('pdf-cancel');
   const pdfGenerateBtn = document.getElementById('pdf-generate');
@@ -918,10 +977,9 @@
   });
 
   async function generatePdf() {
-    const element = document.getElementById('reader-content');
     const title = articleData ? articleData.title : 'Article';
 
-    // Resolve margins based on selected preset
+    // Resolve margins based on selected preset (in mm)
     let mTop, mRight, mBottom, mLeft;
     if (activeMarginPreset === 'custom') {
       mTop = parseInt(marginTopInput.value) || 0;
@@ -937,132 +995,31 @@
     }
     const pageSize = pageSizeSelect.value || 'a4';
 
-    // Strip interactive visuals before rendering PDF
-    articleBody.classList.remove('delete-hover-active');
-    articleBody.querySelectorAll('[data-hovered]').forEach((el) => {
-      el.removeAttribute('data-hovered');
-    });
-    articleBody.querySelectorAll('.reader-editing').forEach((el) => {
-      el.removeAttribute('contenteditable');
-      el.classList.remove('reader-editing');
-    });
-    articleBody.querySelectorAll('.image-selected').forEach((el) => {
-      el.classList.remove('image-selected');
-    });
-    // Hide resize bar during PDF
-    const resizeBarEl = document.querySelector('.image-resize-bar');
-    if (resizeBarEl) resizeBarEl.style.display = 'none';
+    // Get the current tab ID (extension pages need to query it)
+    const tab = await chrome.tabs.getCurrent();
+    const tabId = tab ? tab.id : undefined;
 
-    // Temporarily wrap headings + next sibling to prevent orphan headings at page bottom
-    const wrappers = wrapHeadingsWithContent(element);
-
-    const headings = collectHeadings(element);
-
-    const opt = {
-      margin: [mTop, mRight, mBottom, mLeft],
-      filename: sanitizeFilename(title) + '.pdf',
-      image: { type: 'jpeg', quality: 0.95 },
-      html2canvas: {
-        scale: 2,
-        useCORS: true,
-        letterRendering: true
-      },
-      jsPDF: {
-        unit: 'mm',
-        format: pageSize,
-        orientation: 'portrait'
-      },
-      pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-    };
-
-    const worker = html2pdf().set(opt).from(element);
-
-    await worker.toPdf().get('pdf').then((pdf) => {
-      if (headings.length > 0) {
-        addPdfBookmarks(pdf, headings, element);
-      }
-    }).save();
-
-    // Unwrap after PDF generation to restore original DOM
-    unwrapHeadingsFromContent(wrappers);
-  }
-
-  function wrapHeadingsWithContent(container) {
-    const wrappers = [];
-    const headingEls = container.querySelectorAll('#article-body h1, #article-body h2, #article-body h3, #article-body h4, #article-body h5, #article-body h6');
-
-    headingEls.forEach(heading => {
-      const next = heading.nextElementSibling;
-      // Only wrap if there's a next sibling and it's not another heading
-      if (next && !/^H[1-6]$/.test(next.tagName)) {
-        const wrapper = document.createElement('div');
-        wrapper.className = 'pdf-heading-group';
-        wrapper.style.pageBreakInside = 'avoid';
-        wrapper.style.breakInside = 'avoid';
-        heading.parentNode.insertBefore(wrapper, heading);
-        wrapper.appendChild(heading);
-        wrapper.appendChild(next);
-        wrappers.push(wrapper);
-      }
-    });
-
-    return wrappers;
-  }
-
-  function unwrapHeadingsFromContent(wrappers) {
-    wrappers.forEach(wrapper => {
-      const parent = wrapper.parentNode;
-      while (wrapper.firstChild) {
-        parent.insertBefore(wrapper.firstChild, wrapper);
-      }
-      parent.removeChild(wrapper);
-    });
-  }
-
-  function collectHeadings(container) {
-    const headings = [];
-    const hElements = container.querySelectorAll('h1, h2, h3, h4');
-    hElements.forEach((h) => {
-      const level = parseInt(h.tagName.charAt(1));
-      headings.push({
-        text: h.textContent.trim(),
-        level: level,
-        element: h
-      });
-    });
-    return headings;
-  }
-
-  function addPdfBookmarks(pdf, headings, container) {
-    if (!pdf.outline || !pdf.outline.add) {
-      console.warn('PDF outline API not available in this version of jsPDF');
-      return;
+    if (!tabId) {
+      throw new Error('Could not determine current tab ID');
     }
 
-    const containerRect = container.getBoundingClientRect();
-    const contentHeight = containerRect.height;
-
-    let parentStack = [null];
-
-    headings.forEach((heading) => {
-      const rect = heading.element.getBoundingClientRect();
-      const yPos = (rect.top - containerRect.top) / contentHeight;
-      const page = Math.floor(yPos * (pdf.internal.getNumberOfPages())) + 1;
-
-      while (parentStack.length > heading.level) {
-        parentStack.pop();
-      }
-      const parent = parentStack[parentStack.length - 1];
-
-      try {
-        const bookmark = pdf.outline.add(parent, heading.text, { pageNumber: page });
-        while (parentStack.length <= heading.level) {
-          parentStack.push(bookmark);
-        }
-      } catch (e) {
-        console.warn('Could not add bookmark:', heading.text, e);
+    // Send message to background script to generate PDF via chrome.debugger
+    const response = await chrome.runtime.sendMessage({
+      type: 'GENERATE_PDF',
+      tabId: tabId,
+      options: {
+        filename: sanitizeFilename(title) + '.pdf',
+        pageSize: pageSize,
+        marginTop: mTop,
+        marginRight: mRight,
+        marginBottom: mBottom,
+        marginLeft: mLeft
       }
     });
+
+    if (!response || !response.success) {
+      throw new Error((response && response.error) || 'PDF generation failed');
+    }
   }
 
   function sanitizeFilename(name) {
