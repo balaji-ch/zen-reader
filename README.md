@@ -51,12 +51,19 @@ When you click the PDF button, a dialog appears with:
 
 | Setting | Description |
 |---------|-------------|
-| Top/Right/Bottom/Left margins | Individual margin control in millimeters (0–50mm) |
+| Margins | **No Margin** (0mm), **Minimal** (5mm all sides), or **Custom** (per-side control, 0–50mm) |
 | Page size | A4, Letter, or Legal |
 
 The generated PDF includes:
 - Bookmarks/outline from article headings (H1–H4)
 - Page-break protection (headings kept with content, code blocks don't split)
+
+## Known Limitations
+
+- **PDF is image-based, not text-based.** The PDF export uses html2pdf.js (html2canvas + jsPDF), which rasterizes the page to a canvas image and embeds it in the PDF. This means text in the PDF is not selectable, searchable, or copy-able. This tradeoff exists because client-side text-based PDF generation with bookmark support is not feasible in a Chrome extension. Use the **Print** button (browser native print-to-PDF) if you need selectable text (but this won't include bookmarks).
+- **Cannot extract from restricted pages.** Chrome prevents content script injection on `chrome://`, `edge://`, `chrome-extension://`, Chrome Web Store pages, and `file://` URLs.
+- **Math rendering (MathJax/KaTeX) is not supported.** Articles with LaTeX math notation will show raw math source rather than rendered equations.
+- **Very long articles may produce large PDFs.** Since the PDF is image-based at 2x scale, articles with many pages can result in large file sizes.
 
 ## Project Structure
 
