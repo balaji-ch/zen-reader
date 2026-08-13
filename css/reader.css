@@ -146,6 +146,102 @@ body.dark .progress-bar {
   color: #212529;
 }
 
+/* Divider between toolbar groups (View / Edit / Export) */
+.rtb-divider {
+  width: 60%;
+  height: 1px;
+  margin: 2px auto;
+  background: var(--toolbar-border);
+}
+
+/* Handle row: drag grip (left) + minimize button (right) */
+.rtb-handle-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 16px;
+  margin: -2px 0 2px;
+}
+
+/* Drag handle (grip dots) */
+.rtb-handle {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #adb5bd;
+  cursor: grab;
+  border-radius: 6px;
+  transition: color 0.15s, background 0.15s;
+  touch-action: none; /* let JS own the drag gesture on touch devices */
+}
+
+.rtb-handle:hover {
+  color: #6c757d;
+  background: #f0f0f0;
+}
+
+/* Minimize-to-gear button */
+.rtb-minimize {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 16px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: #adb5bd;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.rtb-minimize:hover {
+  color: #6c757d;
+  background: #f0f0f0;
+}
+
+body.dark .rtb-minimize {
+  color: #6e6e6e;
+}
+
+body.dark .rtb-minimize:hover {
+  color: #9d9d9d;
+  background: #3c3c3c;
+}
+
+/* Bounce the gear button when the toolbar minimizes into it */
+@keyframes gearBounceIn {
+  0%   { transform: scale(0.3); opacity: 0; }
+  60%  { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.gear-btn.bounce-in {
+  animation: gearBounceIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.right-toolbar.dragging {
+  /* Slightly lift the toolbar while dragging for visual feedback */
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.16);
+  transition: none; /* no lag while following the pointer */
+}
+
+.right-toolbar.dragging .rtb-handle {
+  cursor: grabbing;
+}
+
+body.dark .rtb-handle {
+  color: #6e6e6e;
+}
+
+body.dark .rtb-handle:hover {
+  color: #9d9d9d;
+  background: #3c3c3c;
+}
+
 /* Gear button (collapsed state) */
 .gear-btn {
   position: fixed;
@@ -240,6 +336,51 @@ body.dark .progress-bar {
 
 .bookmarks-close:hover {
   opacity: 1;
+}
+
+.bookmarks-stats {
+  padding: 8px 16px;
+  font-size: 11px;
+  color: #6c757d;
+  border-bottom: 1px solid var(--toolbar-border);
+  display: flex;
+  gap: 12px;
+}
+
+.bookmarks-stats span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+body.dark .bookmarks-stats {
+  color: #808080;
+  border-bottom-color: #3c3c3c;
+}
+
+/* Selection word count tooltip */
+.selection-count {
+  position: fixed;
+  z-index: 9999;
+  padding: 4px 10px;
+  background: #343a40;
+  color: white;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s;
+  white-space: nowrap;
+}
+
+.selection-count.visible {
+  opacity: 1;
+}
+
+body.dark .selection-count {
+  background: #d4d4d4;
+  color: #1e1e1e;
 }
 
 .bookmarks-list {
@@ -353,6 +494,33 @@ body.dark .progress-bar {
 .popover-row input[type="range"] {
   flex: 1;
   width: 100px;
+}
+
+.custom-css-textarea {
+  width: 100%;
+  min-height: 60px;
+  max-height: 120px;
+  font-family: 'JetBrains Mono', 'Consolas', monospace;
+  font-size: 11px;
+  padding: 8px;
+  border: 1px solid var(--toolbar-border);
+  border-radius: 4px;
+  background: #f8f9fa;
+  color: #333;
+  resize: vertical;
+  line-height: 1.4;
+}
+
+.custom-css-textarea:focus {
+  outline: none;
+  border-color: #1a73e8;
+  box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.15);
+}
+
+body.dark .custom-css-textarea {
+  background: #1e1e1e;
+  border-color: #3c3c3c;
+  color: #d4d4d4;
 }
 
 .popover-row .size-value {
@@ -1033,16 +1201,22 @@ pre[data-lang="yaml"] { border-left-color: #cb171e; }
 }
 
 /* ===== Hints card (positioned below right toolbar) ===== */
+/* top/right are set in JS from the toolbar's measured geometry so the card
+   always sits just under the toolbar regardless of its height. The values
+   below are only a fallback if JS positioning hasn't run yet. */
 .reader-hints-card {
   position: fixed;
   top: 420px;
   right: 20px;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
+  /* Single amber card (was 5 separately-colored items) */
+  background: #fffbeb;
+  border: 1px solid #f59e0b;
+  border-left: 4px solid #f59e0b;
   border-radius: 10px;
   padding: 14px 18px;
   box-shadow: 0 4px 16px rgba(0,0,0,0.08);
   font-size: 12px;
+  color: #d97706;
   z-index: 3000;
   opacity: 0;
   transform: translateX(10px);
@@ -1055,17 +1229,36 @@ pre[data-lang="yaml"] { border-left-color: #cb171e; }
   transform: translateX(0);
 }
 
+/* Safety for very short viewports: never exceed the screen; scroll if needed
+   so all hint items remain reachable. */
+.reader-hints-card {
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
+}
+
+.reader-hints-card.dragging {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  transition: none; /* follow the pointer without lag */
+}
+
 .hints-card-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-bottom: 8px;
+  cursor: grab;
+  touch-action: none; /* JS owns the drag gesture */
+  user-select: none;
+}
+
+.reader-hints-card.dragging .hints-card-header {
+  cursor: grabbing;
 }
 
 .hints-card-title {
-  font-weight: 600;
+  font-weight: 700;
   font-size: 13px;
-  color: #1e293b;
+  color: #b45309; /* darker amber for the title */
 }
 
 .hints-card-header .hint-close {
@@ -1073,10 +1266,10 @@ pre[data-lang="yaml"] { border-left-color: #cb171e; }
   border: none;
   font-size: 18px;
   cursor: pointer;
-  opacity: 0.4;
+  opacity: 0.5;
   padding: 0 4px;
   line-height: 1;
-  color: #64748b;
+  color: #b45309;
   transition: opacity 0.15s;
 }
 
@@ -1085,27 +1278,28 @@ pre[data-lang="yaml"] { border-left-color: #cb171e; }
 }
 
 .hints-card-list {
-  list-style: none;
+  list-style: disc;
   margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+  padding: 0 0 0 18px;
 }
 
 .hints-card-list .hint-item {
-  padding: 5px 10px;
-  border-radius: 5px;
+  margin: 0 0 5px;
+  padding: 0;
   font-weight: 500;
-  font-size: 11px;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: #92400e; /* amber-800 body text */
   white-space: normal;
 }
 
-.hint-item-1 { background: #eff6ff; color: #1d4ed8; border-left: 3px solid #3b82f6; }
-.hint-item-2 { background: #fef2f2; color: #dc2626; border-left: 3px solid #ef4444; }
-.hint-item-3 { background: #f5f3ff; color: #7c3aed; border-left: 3px solid #8b5cf6; }
-.hint-item-4 { background: #ecfdf5; color: #059669; border-left: 3px solid #10b981; }
-.hint-item-5 { background: #fffbeb; color: #d97706; border-left: 3px solid #f59e0b; }
+.hints-card-list .hint-item::marker {
+  color: #f59e0b;
+}
+
+.hints-card-list .hint-item:last-child {
+  margin-bottom: 0;
+}
 
 /* Smooth fade-out dismiss (replaces explode) */
 @keyframes hintDismiss {
@@ -1159,6 +1353,10 @@ body.dark .rtb-btn.active {
   background: #3c3c3c;
   border-color: #505050;
   color: #d4d4d4;
+}
+
+body.dark .rtb-divider {
+  background: #3c3c3c;
 }
 
 body.dark .gear-btn {
@@ -1322,12 +1520,22 @@ body.dark .weight-option.active {
 }
 
 body.dark .reader-hints-card {
-  background: #252526;
-  border-color: #3c3c3c;
+  background: #2a2213; /* dark amber-tinted surface */
+  border-color: #a86e12;
+  border-left-color: #f59e0b;
+  color: #fcd34d;
 }
 
 body.dark .hints-card-title {
-  color: #d4d4d4;
+  color: #fbbf24;
+}
+
+body.dark .hints-card-header .hint-close {
+  color: #fbbf24;
+}
+
+body.dark .hints-card-list .hint-item {
+  color: #fcd34d;
 }
 
 body.dark .dialog {
@@ -1391,6 +1599,22 @@ body.dark .image-resize-bar button {
   background: #333333;
   border-color: #3c3c3c;
   color: #d4d4d4;
+}
+
+/* ===== Focus Mode ===== */
+/* Blocks flagged by JS get dimmed; the active/near ones are brought back up.
+   Uses an explicit class so it works regardless of DOM nesting depth. */
+body.focus-mode #article-body .focus-dim {
+  opacity: 0.15 !important;
+  transition: opacity 0.3s ease;
+}
+
+body.focus-mode #article-body .focus-dim.focus-near {
+  opacity: 0.4 !important;
+}
+
+body.focus-mode #article-body .focus-dim.focus-active {
+  opacity: 1 !important;
 }
 
 /* ===== Responsive: auto-hide bookmarks on narrow viewports ===== */

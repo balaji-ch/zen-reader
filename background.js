@@ -10,6 +10,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     });
   }
 
+  if (message.type === 'FETCH_IMAGE') {
+    // Fetch a remote image from the background worker. Because the service
+    // worker has host_permissions, this bypasses the page's cross-origin/
+    // referrer restrictions that cause some CDNs to 404 <img> requests.
+    // Returns a data: URL the reader can display. Fully generic (any host).
+    fetchImageAsDataUrl(message.url)
+      .then((dataUrl) => sendResponse({ success: true, dataUrl }))
+      .catch((err) => sendResponse({ success: false, error: err.message }));
+    return true; // async response
+  }
+
   if (message.type === 'GENERATE_PDF') {
     // sender.tab is undefined for extension pages; use the tabId passed in the message
     const tabId = message.tabId;
@@ -21,6 +32,28 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   return true;
 });
+
+/**
+ * Fetches a remote image and returns it as a data: URL. Runs in the service
+ * worker where host_permissions allow reading cross-origin bytes; sends no
+ * referrer so hotlink-protected CDNs serve the image. Generic (any host).
+ */
+async function fetchImageAsDataUrl(url) {
+  const resp = await fetch(url, { referrer: '', referrerPolicy: 'no-referrer' });
+  if (!resp.ok) throw new Error('HTTP ' + resp.status);
+  const blob = await resp.blob();
+  if (!blob || blob.size === 0) throw new Error('empty image');
+  const buf = await blob.arrayBuffer();
+  const bytes = new Uint8Array(buf);
+  let binary = '';
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+  }
+  const b64 = btoa(binary);
+  const type = blob.type || 'image/png';
+  return `data:${type};base64,${b64}`;
+}
 
 // Page size dimensions in inches
 const PAGE_SIZES = {

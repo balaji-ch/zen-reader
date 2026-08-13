@@ -1,6 +1,6 @@
 {
   "name": "chrome-reader-extension",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "",
   "main": "index.js",
   "directories": {
@@ -8,7 +8,7 @@
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "pack": "powershell -Command \"Compress-Archive -Path manifest.json,background.js,content.js,popup.html,popup.js,reader.html,reader.js,css,lib,icons -DestinationPath zen-reader.zip -Force\""
+    "pack": "powershell -Command \"Compress-Archive -Path manifest.json,background.js,content.js,popup.html,popup.js,reader.html,reader.js,css,lib,icons,fonts -DestinationPath zen-reader.zip -Force\""
   },
   "keywords": [],
   "author": "",

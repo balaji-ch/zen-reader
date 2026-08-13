@@ -4,3 +4,6 @@ node_modules/
 *.zip
 .DS_Store
 Thumbs.db
+
+# Internal dev/resume notes — kept local, not part of the public repo
+SESSION_NOTES.md

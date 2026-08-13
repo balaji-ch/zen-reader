@@ -45,17 +45,7 @@
         showToast('Undo: image resize reverted');
         break;
       }
-      case 'cleanup': {
-        action.items.forEach((item) => {
-          if (item.nextSibling && item.parent.contains(item.nextSibling)) {
-            item.parent.insertBefore(item.element, item.nextSibling);
-          } else if (item.parent) {
-            item.parent.appendChild(item.element);
-          }
-        });
-        showToast('Undo: restored ' + action.items.length + ' cleaned element' + (action.items.length > 1 ? 's' : ''));
-        break;
-      }
+
     }
   }
 
@@ -92,7 +82,7 @@
   const btnTips = document.getElementById('btn-tips');
   const btnPrint = document.getElementById('btn-print');
   const btnPdf = document.getElementById('btn-pdf');
-  const btnCleanup = document.getElementById('btn-cleanup');
+
   const btnDarkMode = document.getElementById('btn-darkmode');
   const bookmarksPanel = document.getElementById('bookmarks-panel');
   const bookmarksList = document.getElementById('bookmarks-list');
@@ -162,6 +152,31 @@
     expandToolbar();
   });
 
+  // Explicit minimize: collapse immediately into the gear (with a bounce),
+  // regardless of the auto-collapse timer. Closes the appearance popover first
+  // so the collapse isn't blocked by the "don't collapse while popover open"
+  // guard in collapseToolbar().
+  const btnMinimize = document.getElementById('rtb-minimize');
+  if (btnMinimize) {
+    btnMinimize.addEventListener('click', () => {
+      clearTimeout(collapseTimer);
+      if (!appearancePopover.classList.contains('hidden')) {
+        appearancePopover.classList.add('hidden');
+        btnAppearance.classList.remove('active');
+      }
+      collapseToolbar();
+      // Bounce the gear as it appears.
+      gearBtn.classList.remove('bounce-in');
+      // Force reflow so the animation restarts if minimized repeatedly.
+      void gearBtn.offsetWidth;
+      gearBtn.classList.add('bounce-in');
+      gearBtn.addEventListener('animationend', function onEnd() {
+        gearBtn.classList.remove('bounce-in');
+        gearBtn.removeEventListener('animationend', onEnd);
+      });
+    });
+  }
+
   // Reset timer on toolbar interaction
   rightToolbar.addEventListener('mouseenter', () => {
     clearTimeout(collapseTimer);
@@ -173,6 +188,103 @@
 
   // Start the initial collapse timer
   startCollapseTimer();
+
+  // ===== Draggable toolbar =====
+  // The toolbar (and its collapsed gear button) can be dragged anywhere in the
+  // viewport via the grip handle. Position is stored as {top, left} in px and
+  // persisted to chrome.storage.sync so it survives reloads. When a custom
+  // position is set we switch from right-anchored to left/top-anchored layout
+  // (right:auto) and apply the SAME coordinates to both the toolbar and the
+  // gear button so the gear appears exactly where the toolbar was left.
+  const dragHandle = document.getElementById('rtb-handle');
+  const EDGE_MARGIN = 8; // keep at least this many px from any viewport edge
+  let toolbarPos = null; // { top, left } once the user has moved it
+
+  // Clamp a desired top/left so the given element stays fully on screen.
+  function clampPosition(top, left, el) {
+    const w = el.offsetWidth;
+    const h = el.offsetHeight;
+    const maxLeft = window.innerWidth - w - EDGE_MARGIN;
+    const maxTop = window.innerHeight - h - EDGE_MARGIN;
+    return {
+      top: Math.max(EDGE_MARGIN, Math.min(top, maxTop)),
+      left: Math.max(EDGE_MARGIN, Math.min(left, maxLeft))
+    };
+  }
+
+  // Apply the current custom position to both toolbar and gear button.
+  function applyToolbarPosition() {
+    if (!toolbarPos) return;
+    [rightToolbar, gearBtn].forEach((el) => {
+      el.style.right = 'auto';
+      el.style.top = toolbarPos.top + 'px';
+      el.style.left = toolbarPos.left + 'px';
+    });
+  }
+
+  // Restore a saved position (if any) on load.
+  chrome.storage.sync.get('toolbarPos', (result) => {
+    if (result && result.toolbarPos &&
+        typeof result.toolbarPos.top === 'number' &&
+        typeof result.toolbarPos.left === 'number') {
+      // Clamp against the current viewport in case the window is now smaller.
+      toolbarPos = clampPosition(result.toolbarPos.top, result.toolbarPos.left, rightToolbar);
+      applyToolbarPosition();
+    }
+  });
+
+  if (dragHandle) {
+    let dragging = false;
+    let startX = 0, startY = 0;      // pointer position at drag start
+    let originTop = 0, originLeft = 0; // toolbar position at drag start
+
+    dragHandle.addEventListener('pointerdown', (e) => {
+      // Left button / primary pointer only.
+      if (e.button != null && e.button !== 0) return;
+      e.preventDefault();
+
+      const rect = rightToolbar.getBoundingClientRect();
+      originTop = rect.top;
+      originLeft = rect.left;
+      startX = e.clientX;
+      startY = e.clientY;
+      dragging = true;
+
+      rightToolbar.classList.add('dragging');
+      clearTimeout(collapseTimer); // don't auto-collapse mid-drag
+      try { dragHandle.setPointerCapture(e.pointerId); } catch (_) {}
+    });
+
+    dragHandle.addEventListener('pointermove', (e) => {
+      if (!dragging) return;
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      const next = clampPosition(originTop + dy, originLeft + dx, rightToolbar);
+      toolbarPos = next;
+      applyToolbarPosition();
+    });
+
+    function endDrag(e) {
+      if (!dragging) return;
+      dragging = false;
+      rightToolbar.classList.remove('dragging');
+      try { dragHandle.releasePointerCapture(e.pointerId); } catch (_) {}
+      startCollapseTimer(); // resume auto-collapse behaviour
+      if (toolbarPos) chrome.storage.sync.set({ toolbarPos: toolbarPos });
+    }
+    dragHandle.addEventListener('pointerup', endDrag);
+    dragHandle.addEventListener('pointercancel', endDrag);
+  }
+
+  // Keep the toolbar (and any open tips card) on screen if the window resizes.
+  window.addEventListener('resize', () => {
+    if (toolbarPos) {
+      toolbarPos = clampPosition(toolbarPos.top, toolbarPos.left, rightToolbar);
+      applyToolbarPosition();
+    }
+    const openCard = document.querySelector('.reader-hints-card');
+    if (openCard) positionHintsCard(openCard);
+  });
 
   // ===== Keyboard Shortcuts (Alt+key) =====
   document.addEventListener('keydown', (e) => {
@@ -209,6 +321,28 @@
       case 'e':
         e.preventDefault();
         toggleEditMode();
+        break;
+      case 'o':
+        e.preventDefault();
+        toggleFocusMode();
+        break;
+      case 't':
+        e.preventDefault();
+        btnTips.click();
+        break;
+      case 'p':
+        e.preventDefault();
+        btnPrint.click();
+        break;
+      case 's':
+        e.preventDefault();
+        btnPdf.click();
+        break;
+      case 'm':
+        e.preventDefault();
+        // btnMarkdown is declared later in this function scope; the handler
+        // only fires on user keypress (long after init) so the ref is set.
+        btnMarkdown.click();
         break;
     }
   });
@@ -398,6 +532,12 @@
     // Set content
     articleBody.innerHTML = articleData.content;
 
+    // Render LaTeX math if present (KaTeX)
+    renderMath();
+
+    // Load remote images that are blocked by referrer/hotlink protection
+    loadRemoteImages();
+
     // Constrain small decorative/inline images
     constrainDecorativeImages();
 
@@ -416,8 +556,138 @@
     // Build bookmarks from headings
     buildBookmarks();
 
+    // Show reading stats
+    showReadingStats();
+
     // Show hints toast
     showHintsToast();
+  }
+
+  // ===== Reading Stats (time + word count) =====
+  function showReadingStats() {
+    const text = articleBody.textContent || '';
+    const words = text.trim().split(/\s+/).filter(w => w.length > 0).length;
+    const readingTime = Math.max(1, Math.ceil(words / 230)); // ~230 wpm average
+
+    const statsEl = document.getElementById('bookmarks-stats');
+    statsEl.innerHTML = `<span>\u{1F4D6} ${readingTime} min read</span><span>\u{1F4DD} ${words.toLocaleString()} words</span>`;
+  }
+
+  // ===== Selection Word Count =====
+  const selectionCountEl = document.createElement('div');
+  selectionCountEl.className = 'selection-count';
+  document.body.appendChild(selectionCountEl);
+
+  document.addEventListener('selectionchange', () => {
+    const sel = window.getSelection();
+    const text = sel.toString().trim();
+    if (text.length > 0) {
+      const wordCount = text.split(/\s+/).filter(w => w.length > 0).length;
+      if (wordCount > 1) {
+        selectionCountEl.textContent = wordCount + ' words selected';
+        // Position near the selection
+        const range = sel.getRangeAt(0);
+        const rect = range.getBoundingClientRect();
+        selectionCountEl.style.top = (rect.top - 30) + 'px';
+        selectionCountEl.style.left = (rect.left + rect.width / 2) + 'px';
+        selectionCountEl.style.transform = 'translateX(-50%)';
+        selectionCountEl.classList.add('visible');
+      } else {
+        selectionCountEl.classList.remove('visible');
+      }
+    } else {
+      selectionCountEl.classList.remove('visible');
+    }
+  });
+
+  // ===== Render Math (KaTeX) =====
+  function renderMath() {
+    if (typeof renderMathInElement === 'undefined') return;
+
+    // Check if there's any LaTeX-like content before doing the work.
+    // Match: $...$ / $$...$$ inline+display, \( \), \[ \], or \begin{...}.
+    const text = articleBody.textContent;
+    const hasLatex =
+      /\$[^$]+\$/.test(text) ||          // $...$ (also covers $$...$$)
+      /\\\([\s\S]+?\\\)/.test(text) ||   // \( ... \)
+      /\\\[[\s\S]+?\\\]/.test(text) ||   // \[ ... \]
+      /\\begin\{/.test(text);            // \begin{equation} etc.
+    if (!hasLatex) return;
+
+    // Unwrap any <span class="zen-math-source"> wrappers left by content.js
+    // so the LaTeX text is directly in the flow for KaTeX auto-render to find
+    articleBody.querySelectorAll('span.zen-math-source').forEach((span) => {
+      const textNode = document.createTextNode(span.textContent);
+      span.parentNode.replaceChild(textNode, span);
+    });
+
+    try {
+      renderMathInElement(articleBody, {
+        delimiters: [
+          { left: '$$', right: '$$', display: true },
+          { left: '\\[', right: '\\]', display: true },
+          { left: '$', right: '$', display: false },
+          { left: '\\(', right: '\\)', display: false }
+        ],
+        throwOnError: false,
+        trust: true,
+        strict: false,
+        macros: {
+          '\\set': '\\{#1\\}',
+          '\\R': '\\mathbb{R}',
+          '\\N': '\\mathbb{N}',
+          '\\Z': '\\mathbb{Z}',
+          '\\C': '\\mathbb{C}',
+          '\\norm': '\\|#1\\|',
+          '\\abs': '|#1|',
+          '\\argmax': '\\operatorname{arg\\,max}',
+          '\\argmin': '\\operatorname{arg\\,min}'
+        },
+        ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code', 'annotation', 'annotation-xml']
+      });
+    } catch (e) {
+      console.warn('KaTeX rendering error:', e);
+    }
+  }
+
+  // ===== Load remote images (referrer/hotlink workaround) =====
+  // Some image CDNs return 404 for <img> requests that carry a cross-origin
+  // (chrome-extension://) Referer, even though a no-referrer fetch succeeds.
+  // For each remote image we fetch the bytes with referrer disabled and swap in
+  // a blob: URL. This is fully generic (applies to any host) and only kicks in
+  // if the direct <img> load fails, so normal images are unaffected.
+  function loadRemoteImages() {
+    const images = articleBody.querySelectorAll('img');
+    images.forEach((img) => {
+      const src = img.getAttribute('src') || '';
+      // Only handle remote http(s) images; skip data:/blob:/relative.
+      if (!/^https?:\/\//.test(src)) return;
+
+      // Only fall back to the background fetch if the direct <img> load fails
+      // (keeps normal images fast; only referrer-blocked CDNs pay the cost).
+      img.addEventListener('error', () => fetchAsBlob(img, src), { once: true });
+
+      // If it already finished loading with no pixels (fast 404), fall back now.
+      if (img.complete && img.naturalWidth === 0) {
+        fetchAsBlob(img, src);
+      }
+    });
+  }
+
+  function fetchAsBlob(img, src) {
+    // Avoid double-processing / loops once we've swapped the src.
+    if (img.dataset.blobLoaded === '1') return;
+    // An in-page no-cors fetch returns an empty (opaque) blob, so instead ask
+    // the background service worker (which has host_permissions) to fetch the
+    // bytes with no referrer and hand back a data: URL we can display.
+    chrome.runtime.sendMessage({ type: 'FETCH_IMAGE', url: src }, (resp) => {
+      if (chrome.runtime.lastError) return; // messaging failed; leave original
+      if (resp && resp.success && resp.dataUrl) {
+        img.dataset.blobLoaded = '1';
+        img.removeAttribute('srcset'); // ensure the data URL is used
+        img.setAttribute('src', resp.dataUrl);
+      }
+    });
   }
 
   // ===== Constrain decorative/inline images =====
@@ -462,17 +732,22 @@
       const code = pre.querySelector('code');
       if (!code) return;
 
+      // A "real" language comes from an explicit class/attribute on the page.
+      // Anything hljs guesses is flagged auto so markdown export can ignore it.
       let lang = detectLanguage(code) || detectLanguage(pre);
+      let langIsAuto = false;
 
       if (!lang && code.textContent.trim().length > 0) {
         const result = hljs.highlightAuto(code.textContent);
         if (result.language && result.relevance > 5) {
           lang = result.language;
+          langIsAuto = true;
         }
       }
 
       if (lang) {
         pre.setAttribute('data-lang', lang);
+        if (langIsAuto) pre.setAttribute('data-lang-auto', 'true');
         if (!code.querySelector('.hljs-keyword, .hljs-string, .hljs-comment')) {
           try {
             const highlighted = hljs.highlight(code.textContent, { language: lang });
@@ -483,6 +758,7 @@
             if (result.language) {
               lang = result.language;
               pre.setAttribute('data-lang', lang);
+              pre.setAttribute('data-lang-auto', 'true');
             }
           }
         }
@@ -493,6 +769,7 @@
             code.innerHTML = result.value;
             lang = result.language;
             pre.setAttribute('data-lang', lang);
+            pre.setAttribute('data-lang-auto', 'true');
           }
         }
       }
@@ -523,6 +800,96 @@
     lang = lang.toLowerCase();
     return map[lang] || lang;
   }
+
+  // ===== Focus Mode =====
+  let focusModeActive = false;
+  const btnFocus = document.getElementById('btn-focus');
+
+  // Readability wraps content in #readability-page-1 > article, so the real
+  // blocks are not direct children of #article-body. Find the deepest single
+  // wrapper that actually holds the article's block elements.
+  function getContentContainer() {
+    let container = articleBody;
+    // Descend through single-wrapper layers (e.g. #readability-page-1 > article)
+    for (let i = 0; i < 4; i++) {
+      const blockChildren = Array.from(container.children).filter(el =>
+        /^(P|H1|H2|H3|H4|H5|H6|PRE|BLOCKQUOTE|UL|OL|TABLE|FIGURE|IMG)$/.test(el.tagName));
+      if (blockChildren.length >= 2) return container; // found the real content layer
+      // Otherwise descend into the single/most-significant wrapper child
+      const wrappers = Array.from(container.children).filter(el =>
+        el.children.length > 0);
+      if (wrappers.length === 1) {
+        container = wrappers[0];
+      } else {
+        break;
+      }
+    }
+    return container;
+  }
+
+  function getFocusableBlocks() {
+    const container = getContentContainer();
+    const blocks = container.querySelectorAll(
+      ':scope > p, :scope > h1, :scope > h2, :scope > h3, :scope > h4, :scope > h5, :scope > h6, :scope > pre, :scope > blockquote, :scope > ul, :scope > ol, :scope > table, :scope > figure, :scope > img, :scope > div');
+    return Array.from(blocks);
+  }
+
+  function toggleFocusMode() {
+    focusModeActive = !focusModeActive;
+    btnFocus.classList.toggle('active', focusModeActive);
+    document.body.classList.toggle('focus-mode', focusModeActive);
+    if (focusModeActive) {
+      // Mark every content block as dimmable, then highlight the centered one.
+      getFocusableBlocks().forEach(el => el.classList.add('focus-dim'));
+      requestAnimationFrame(() => updateFocusHighlight());
+    } else {
+      // Remove all focus classes
+      articleBody.querySelectorAll('.focus-dim, .focus-active, .focus-near').forEach(el => {
+        el.classList.remove('focus-dim', 'focus-active', 'focus-near');
+      });
+    }
+    showToast(focusModeActive ? 'Focus mode ON' : 'Focus mode OFF');
+  }
+
+  btnFocus.addEventListener('click', toggleFocusMode);
+
+  function updateFocusHighlight() {
+    if (!focusModeActive) return;
+    const children = getFocusableBlocks();
+    if (children.length === 0) return;
+    const viewportCenter = window.innerHeight / 2;
+
+    let closestIdx = 0;
+    let closestDist = Infinity;
+
+    children.forEach((el, i) => {
+      el.classList.remove('focus-active', 'focus-near');
+      const rect = el.getBoundingClientRect();
+      const elCenter = rect.top + rect.height / 2;
+      const dist = Math.abs(elCenter - viewportCenter);
+      if (dist < closestDist) {
+        closestDist = dist;
+        closestIdx = i;
+      }
+    });
+
+    // Highlight the closest element and its neighbors
+    if (children[closestIdx]) children[closestIdx].classList.add('focus-active');
+    if (children[closestIdx - 1]) children[closestIdx - 1].classList.add('focus-near');
+    if (children[closestIdx + 1]) children[closestIdx + 1].classList.add('focus-near');
+  }
+
+  // Update focus on scroll
+  let focusRafPending = false;
+  window.addEventListener('scroll', () => {
+    if (focusModeActive && !focusRafPending) {
+      focusRafPending = true;
+      requestAnimationFrame(() => {
+        updateFocusHighlight();
+        focusRafPending = false;
+      });
+    }
+  });
 
   // ===== Edit Mode =====
   let editModeActive = false;
@@ -859,55 +1226,6 @@
     return similar;
   }
 
-  // ===== Cleanup button =====
-  btnCleanup.addEventListener('click', () => {
-    const noisePatterns = [
-      /click\s*(below\s*)?to\s*(see\s*)?full\s*size/i,
-      /click\s*(here\s*)?to\s*view\s*(in\s*)?full/i,
-      /tap\s*to\s*(view|see|expand)/i,
-      /image\s*by\s*author/i,
-      /source:\s*author/i,
-      /click\s*(to\s*)?(enlarge|expand|zoom)/i,
-      /full[\s-]?size\s*image/i,
-      /click\s*for\s*larger\s*(image|view)/i,
-      /view\s*larger/i,
-    ];
-
-    const candidates = articleBody.querySelectorAll('p, figcaption, span, em, small');
-    const toRemove = [];
-
-    candidates.forEach((el) => {
-      const text = el.textContent.trim();
-      if (text.length > 100) return;
-      for (const pattern of noisePatterns) {
-        if (pattern.test(text)) {
-          toRemove.push(el);
-          break;
-        }
-      }
-    });
-
-    if (toRemove.length > 0) {
-      const undoItems = toRemove.map((el) => ({
-        element: el,
-        parent: el.parentNode,
-        nextSibling: el.nextSibling
-      }));
-      pushUndo({ type: 'cleanup', items: undoItems });
-
-      toRemove.forEach((el) => el.classList.add('deleting'));
-      setTimeout(() => {
-        toRemove.forEach((el) => {
-          el.classList.remove('deleting');
-          el.remove();
-        });
-      }, 200);
-    }
-
-    showToast(toRemove.length > 0
-      ? `Removed ${toRemove.length} noisy element${toRemove.length > 1 ? 's' : ''} (Ctrl+Z to undo)`
-      : 'No noise patterns found');
-  });
 
   // ===== Toast notification =====
   function showToast(message, duration = 2500) {
@@ -924,7 +1242,7 @@
 
   // ===== Hints (Tips) =====
   function showHintsToast() {
-    showHintCards();
+    showHintCards(true); // auto-shown on article load -> fades after 7s
   }
 
   const HINTS = [
@@ -935,7 +1253,12 @@
     'Ignore "debugging started" in PDF export',
   ];
 
-  function showHintCards() {
+  // autoDismiss=true  -> card fades on its own after a delay (used on article
+  //                      load so tips aren't intrusive).
+  // autoDismiss=false -> card stays until the user closes it (used when the
+  //                      Tips button is clicked, since that's an explicit
+  //                      request to read them).
+  function showHintCards(autoDismiss = false) {
     // Remove any existing hint card
     const existing = document.querySelector('.reader-hints-card');
     if (existing) {
@@ -954,9 +1277,9 @@
 
     const list = document.createElement('ul');
     list.className = 'hints-card-list';
-    HINTS.forEach((hint, i) => {
+    HINTS.forEach((hint) => {
       const li = document.createElement('li');
-      li.className = `hint-item hint-item-${i + 1}`;
+      li.className = 'hint-item';
       li.textContent = hint;
       list.appendChild(li);
     });
@@ -968,16 +1291,120 @@
       card.addEventListener('animationend', () => card.remove());
     });
 
+    // Must be in the DOM before we can measure its height for positioning.
     document.body.appendChild(card);
+
+    positionHintsCard(card);
+    makeHintsCardDraggable(card, header);
+
     requestAnimationFrame(() => card.classList.add('visible'));
 
-    // Auto-dismiss after 7 seconds with smooth fade
-    setTimeout(() => {
-      if (document.body.contains(card) && !card.classList.contains('hint-dismiss')) {
-        card.classList.add('hint-dismiss');
-        card.addEventListener('animationend', () => card.remove());
-      }
-    }, 7000);
+    // Only the auto-shown (on-load) card fades on its own after 7s. Cards
+    // opened via the Tips button persist until closed. Dragging cancels the
+    // timer either way (see makeHintsCardDraggable).
+    if (autoDismiss) {
+      hintsAutoDismiss = setTimeout(() => {
+        if (document.body.contains(card) && !card.classList.contains('hint-dismiss')) {
+          card.classList.add('hint-dismiss');
+          card.addEventListener('animationend', () => card.remove());
+        }
+      }, 7000);
+    }
+  }
+
+  // Timer handle so dragging can cancel the auto-dismiss.
+  let hintsAutoDismiss = null;
+
+  // Remembered custom position for the tips card (once the user drags it).
+  let hintsPos = null;
+  chrome.storage.sync.get('hintsPos', (result) => {
+    if (result && result.hintsPos &&
+        typeof result.hintsPos.top === 'number' &&
+        typeof result.hintsPos.left === 'number') {
+      hintsPos = result.hintsPos;
+    }
+  });
+
+  // Position the tips card. If the user has dragged it before, restore that
+  // (clamped). Otherwise anchor it below the toolbar/gear, then shift it UP if
+  // it would overflow the bottom of the viewport so all items stay visible.
+  function positionHintsCard(card) {
+    const cw = card.offsetWidth;
+    const ch = card.offsetHeight;
+    const EDGE = 8;
+
+    let top, left;
+    if (hintsPos) {
+      top = hintsPos.top;
+      left = hintsPos.left;
+    } else {
+      const anchor = rightToolbar.classList.contains('collapsed') ? gearBtn : rightToolbar;
+      const rect = anchor.getBoundingClientRect();
+      top = (rect.height || rect.width) ? rect.bottom + 12 : 90;
+      // Right-align the card under the anchor's right edge.
+      const right = (rect.height || rect.width) ? (window.innerWidth - rect.right) : 20;
+      left = window.innerWidth - right - cw;
+    }
+
+    // Clamp so the whole card (all 5 hints) stays on screen.
+    const maxLeft = window.innerWidth - cw - EDGE;
+    const maxTop = window.innerHeight - ch - EDGE;
+    left = Math.max(EDGE, Math.min(left, maxLeft));
+    top = Math.max(EDGE, Math.min(top, maxTop));
+
+    card.style.top = top + 'px';
+    card.style.left = left + 'px';
+    card.style.right = 'auto';
+  }
+
+  // Drag the tips card by its header. Mirrors the toolbar drag: pointer events,
+  // viewport clamp, persist to storage.
+  function makeHintsCardDraggable(card, header) {
+    let dragging = false;
+    let startX = 0, startY = 0, originTop = 0, originLeft = 0;
+    const EDGE = 8;
+
+    header.addEventListener('pointerdown', (e) => {
+      // Ignore drags that start on the close button.
+      if (e.target.closest('.hint-close')) return;
+      if (e.button != null && e.button !== 0) return;
+      e.preventDefault();
+
+      const rect = card.getBoundingClientRect();
+      originTop = rect.top;
+      originLeft = rect.left;
+      startX = e.clientX;
+      startY = e.clientY;
+      dragging = true;
+
+      card.classList.add('dragging');
+      clearTimeout(hintsAutoDismiss); // keep it open while interacting
+      try { header.setPointerCapture(e.pointerId); } catch (_) {}
+    });
+
+    header.addEventListener('pointermove', (e) => {
+      if (!dragging) return;
+      const cw = card.offsetWidth;
+      const ch = card.offsetHeight;
+      let top = originTop + (e.clientY - startY);
+      let left = originLeft + (e.clientX - startX);
+      left = Math.max(EDGE, Math.min(left, window.innerWidth - cw - EDGE));
+      top = Math.max(EDGE, Math.min(top, window.innerHeight - ch - EDGE));
+      hintsPos = { top, left };
+      card.style.top = top + 'px';
+      card.style.left = left + 'px';
+      card.style.right = 'auto';
+    });
+
+    function endDrag(e) {
+      if (!dragging) return;
+      dragging = false;
+      card.classList.remove('dragging');
+      try { header.releasePointerCapture(e.pointerId); } catch (_) {}
+      if (hintsPos) chrome.storage.sync.set({ hintsPos: hintsPos });
+    }
+    header.addEventListener('pointerup', endDrag);
+    header.addEventListener('pointercancel', endDrag);
   }
 
   // Tips button
@@ -1080,6 +1507,38 @@
     chrome.storage.sync.set({ codeWeight: btn.dataset.weight });
   });
 
+  // ===== Custom CSS =====
+  const customCssInput = document.getElementById('custom-css-input');
+  let customStyleEl = document.createElement('style');
+  customStyleEl.id = 'custom-user-css';
+  document.head.appendChild(customStyleEl);
+
+  function applyCustomCss(css) {
+    // Guard: if the extension CSP ever blocks inline styles again, don't let it
+    // abort the rest of the reader script.
+    try {
+      customStyleEl.textContent = css || '';
+    } catch (e) {
+      console.warn('Custom CSS could not be applied:', e);
+    }
+  }
+
+  if (customCssInput) {
+    customCssInput.addEventListener('input', () => {
+      const css = customCssInput.value;
+      applyCustomCss(css);
+      chrome.storage.sync.set({ customCss: css });
+    });
+
+    // Restore custom CSS
+    chrome.storage.sync.get('customCss', (result) => {
+      if (result.customCss) {
+        customCssInput.value = result.customCss;
+        applyCustomCss(result.customCss);
+      }
+    });
+  }
+
   // ===== Print =====
   btnPrint.addEventListener('click', () => {
     window.print();
@@ -1164,7 +1623,7 @@
       // Restore dark mode if it was active
       if (wasDark) document.body.classList.add('dark');
       btnPdf.disabled = false;
-      btnPdf.title = 'Save as PDF';
+      btnPdf.title = 'Save as PDF (Alt+S)';
     }
   });
 
@@ -1281,6 +1740,202 @@
 
   function sanitizeFilename(name) {
     return name.replace(/[^a-z0-9\-_ ]/gi, '').substring(0, 100).trim() || 'article';
+  }
+
+  // ===== Export as Markdown =====
+  const btnMarkdown = document.getElementById('btn-markdown');
+
+  btnMarkdown.addEventListener('click', () => {
+    const markdown = htmlToMarkdown(articleBody);
+    const title = articleData ? articleData.title : 'Article';
+    const header = `# ${title}\n\n`;
+    const meta = articleData && articleData.url ? `> Source: ${articleData.url}\n\n` : '';
+    const fullMd = header + meta + markdown;
+
+    // Download as .md file
+    const blob = new Blob([fullMd], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = sanitizeFilename(title) + '.md';
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('Markdown exported');
+  });
+
+  function htmlToMarkdown(container) {
+    let md = '';
+    const children = container.childNodes;
+
+    for (const node of children) {
+      if (node.nodeType === Node.TEXT_NODE) {
+        md += node.textContent;
+        continue;
+      }
+      if (node.nodeType !== Node.ELEMENT_NODE) continue;
+
+      const tag = node.tagName.toLowerCase();
+
+      switch (tag) {
+        case 'h1': md += '\n## ' + node.textContent.trim() + '\n\n'; break;
+        case 'h2': md += '\n### ' + node.textContent.trim() + '\n\n'; break;
+        case 'h3': md += '\n#### ' + node.textContent.trim() + '\n\n'; break;
+        case 'h4': md += '\n##### ' + node.textContent.trim() + '\n\n'; break;
+        case 'h5': case 'h6':
+          md += '\n###### ' + node.textContent.trim() + '\n\n'; break;
+        case 'p':
+          md += inlineToMarkdown(node) + '\n\n'; break;
+        case 'blockquote':
+          const bqLines = node.textContent.trim().split('\n');
+          md += bqLines.map(l => '> ' + l).join('\n') + '\n\n'; break;
+        case 'pre': {
+          md += preToMarkdown(node); break;
+        }
+        case 'ul': {
+          const items = node.querySelectorAll(':scope > li');
+          items.forEach(li => { md += '- ' + inlineToMarkdown(li).trim() + '\n'; });
+          md += '\n'; break;
+        }
+        case 'ol': {
+          const items = node.querySelectorAll(':scope > li');
+          items.forEach((li, i) => { md += (i + 1) + '. ' + inlineToMarkdown(li).trim() + '\n'; });
+          md += '\n'; break;
+        }
+        case 'figure': {
+          const img = node.querySelector('img');
+          const caption = node.querySelector('figcaption');
+          if (img) {
+            const alt = caption ? caption.textContent.trim() : (img.alt || '');
+            md += '![' + alt + '](' + (img.src || '') + ')\n\n';
+          }
+          break;
+        }
+        case 'img':
+          md += '![' + (node.alt || '') + '](' + (node.src || '') + ')\n\n'; break;
+        case 'table': {
+          const rows = node.querySelectorAll('tr');
+          rows.forEach((row, ri) => {
+            const cells = row.querySelectorAll('th, td');
+            const line = '| ' + Array.from(cells).map(c => c.textContent.trim()).join(' | ') + ' |';
+            md += line + '\n';
+            if (ri === 0) {
+              md += '| ' + Array.from(cells).map(() => '---').join(' | ') + ' |\n';
+            }
+          });
+          md += '\n'; break;
+        }
+        case 'hr':
+          md += '---\n\n'; break;
+        default: {
+          // A wrapper (e.g. <div class="highlight language-python"> or <div class="cell">)
+          // that contains exactly one <pre> should be treated as a single code block,
+          // otherwise recursing flattens its newlines into a single line.
+          const pre = node.querySelector && node.querySelector('pre');
+          if (pre && node.querySelectorAll('pre').length === 1) {
+            md += preToMarkdown(pre, node);
+          } else if (node.children.length > 0) {
+            md += htmlToMarkdown(node);
+          } else if (node.textContent.trim()) {
+            md += node.textContent.trim() + '\n\n';
+          }
+        }
+      }
+    }
+    return md;
+  }
+
+  // Convert a <pre> (optionally with a wrapper carrying the language class) to a
+  // fenced code block, preserving internal newlines and indentation.
+  function preToMarkdown(pre, wrapper) {
+    const code = pre.querySelector('code');
+    const source = code || pre;
+    let text = extractCodeText(source);
+    text = text.replace(/^\n+/, '').replace(/[ \t\n]+$/, '');
+
+    // Derive language ONLY from real page hints. Ignore languages that the
+    // reader's highlighter auto-guessed (flagged data-lang-auto), since those
+    // are frequently wrong (e.g. Python detected as "go"/"kotlin"/"css").
+    let lang = '';
+    if (pre.getAttribute('data-lang') && pre.getAttribute('data-lang-auto') !== 'true') {
+      lang = pre.getAttribute('data-lang');
+    }
+    if (!lang) {
+      const cls = [pre, code, wrapper]
+        .filter(Boolean)
+        .map(el => el.className || '')
+        .join(' ');
+      const m = cls.match(/(?:language|lang)-([a-z0-9+#]+)/i);
+      if (m && m[1].toLowerCase() !== 'plain') lang = m[1];
+    }
+
+    return '```' + lang + '\n' + text + '\n```\n\n';
+  }
+
+  // Extract code text with real line breaks. Some highlighters emit each line as
+  // a separate block element with NO "\n" text nodes between them, so plain
+  // textContent collapses everything onto one line. Walk the DOM and insert a
+  // newline at every hard line break (<br>) and block-level boundary, with
+  // innerText / textContent as fallbacks.
+  function extractCodeText(source) {
+    // If textContent already has newlines, it's reliable.
+    const raw = source.textContent || '';
+    if (raw.indexOf('\n') !== -1) return raw;
+
+    // Manual walk: reconstruct newlines from <br> and block-level children.
+    const BLOCK_TAGS = new Set(['DIV', 'P', 'LI', 'TR', 'SECTION', 'SPAN']);
+    let out = '';
+    const walk = (node) => {
+      node.childNodes.forEach((child) => {
+        if (child.nodeType === Node.TEXT_NODE) {
+          out += child.textContent;
+        } else if (child.nodeType === Node.ELEMENT_NODE) {
+          const tag = child.tagName;
+          if (tag === 'BR') {
+            out += '\n';
+            return;
+          }
+          // A "line" is typically a direct block-level child of the code element.
+          const isLine = child.parentNode === source && BLOCK_TAGS.has(tag);
+          walk(child);
+          if (isLine && !out.endsWith('\n')) out += '\n';
+        }
+      });
+    };
+    walk(source);
+
+    // If the walk still produced no line breaks, fall back to innerText
+    // (respects rendered line boxes), then to the raw textContent.
+    if (out.indexOf('\n') === -1) {
+      const it = (source.innerText || '').replace(/\r\n/g, '\n');
+      if (it.indexOf('\n') !== -1) return it;
+    }
+    return out || raw;
+  }
+
+  function inlineToMarkdown(el) {
+    let result = '';
+    for (const node of el.childNodes) {
+      if (node.nodeType === Node.TEXT_NODE) {
+        result += node.textContent;
+      } else if (node.nodeType === Node.ELEMENT_NODE) {
+        const tag = node.tagName.toLowerCase();
+        const text = node.textContent;
+        if (tag === 'strong' || tag === 'b') {
+          result += '**' + text + '**';
+        } else if (tag === 'em' || tag === 'i') {
+          result += '*' + text + '*';
+        } else if (tag === 'code') {
+          result += '`' + text + '`';
+        } else if (tag === 'a') {
+          result += '[' + text + '](' + (node.href || '') + ')';
+        } else if (tag === 'img') {
+          result += '![' + (node.alt || '') + '](' + (node.src || '') + ')';
+        } else {
+          result += text;
+        }
+      }
+    }
+    return result;
   }
 
 })();

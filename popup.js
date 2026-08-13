@@ -8,6 +8,26 @@ document.getElementById('btn-extract').addEventListener('click', async () => {
   btn.textContent = 'Extracting...';
 
   try {
+    // Step 1: run the MathJax source grabber in the page's MAIN world. This
+    // recovers the original LaTeX from MathJax's in-memory store (the rendered
+    // DOM often no longer contains it) and stamps it onto the rendered nodes as
+    // data-zen-tex / data-zen-display attributes. Runs FIRST so the attributes
+    // exist on the shared DOM before content.js clones it. Best-effort: on pages
+    // without MathJax this is a no-op. Failures here must not block extraction.
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        world: 'MAIN',
+        files: ['math-grabber.js']
+      });
+    } catch (e) {
+      // MAIN-world injection can be disallowed on some pages; extraction can
+      // still proceed with the DOM-based math fallbacks in content.js.
+      console.warn('ZenReader: math grabber injection skipped:', e);
+    }
+
+    // Step 2: run extraction in the ISOLATED world (default). Readability +
+    // preprocessMath read the data-zen-tex attributes left by step 1.
     await chrome.scripting.executeScript({
       target: { tabId: tab.id },
       files: ['lib/Readability.js', 'content.js']
