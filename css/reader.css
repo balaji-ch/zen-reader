@@ -31,6 +31,22 @@ body {
   background: var(--bg-color);
 }
 
+/* ===== Reading Progress Bar ===== */
+.progress-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 3px;
+  width: 0%;
+  background: linear-gradient(90deg, #1a73e8, #6ab0f3);
+  z-index: 9999;
+  transition: width 0.1s linear;
+}
+
+body.dark .progress-bar {
+  background: linear-gradient(90deg, #6ab0f3, #a0d4ff);
+}
+
 /* ===== Top Banner ===== */
 #banner {
   position: sticky;
@@ -514,6 +530,26 @@ body {
   background: white;
 }
 
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #495057;
+  cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+body.dark .checkbox-label {
+  color: #d4d4d4;
+}
+
 .dialog-actions {
   display: flex;
   justify-content: flex-end;
@@ -551,6 +587,90 @@ body {
 .dialog-btn-primary:hover {
   background: #1557b0;
 }
+
+/* ===== PDF Table of Contents ===== */
+.pdf-toc-page {
+  page-break-after: always;
+  break-after: page;
+  padding-bottom: 40px;
+}
+
+.pdf-toc-header {
+  margin-bottom: 28px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.pdf-toc-article-title {
+  font-size: 1.8em;
+  font-weight: 700;
+  line-height: 1.3;
+  margin: 0 0 8px;
+  color: #1a1a1a;
+}
+
+.pdf-toc-article-meta {
+  font-size: 0.85em;
+  color: #6c757d;
+  margin: 0;
+}
+
+.pdf-toc-article-meta a {
+  color: #1a73e8;
+  text-decoration: none;
+}
+
+.pdf-toc-heading {
+  font-size: 1.1em;
+  font-weight: 600;
+  color: #495057;
+  margin: 0 0 16px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.pdf-toc-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.pdf-toc-item {
+  display: flex;
+  align-items: baseline;
+  padding: 6px 0;
+  font-size: 13px;
+  color: #333;
+}
+
+.pdf-toc-item:nth-child(even) {
+  background: #f9f9f9;
+}
+
+.pdf-toc-item-text {
+  flex-shrink: 0;
+}
+
+.pdf-toc-item-dots {
+  flex: 1;
+  margin: 0 8px;
+  min-width: 20px;
+  overflow: hidden;
+  color: #bbb;
+  font-size: 10px;
+  letter-spacing: 2px;
+  line-height: 1;
+  position: relative;
+  top: -2px;
+}
+
+.pdf-toc-level-1 .pdf-toc-item-text { font-weight: 600; font-size: 14px; }
+.pdf-toc-level-1 { padding-left: 0; }
+.pdf-toc-level-2 { padding-left: 18px; }
+.pdf-toc-level-3 { padding-left: 36px; font-size: 12px; }
+.pdf-toc-level-4 { padding-left: 52px; font-size: 12px; color: #555; }
+.pdf-toc-level-5 { padding-left: 64px; font-size: 11px; color: #666; }
+.pdf-toc-level-6 { padding-left: 76px; font-size: 11px; color: #666; }
 
 /* ===== Article content area ===== */
 #reader-content {
@@ -998,12 +1118,347 @@ pre[data-lang="yaml"] { border-left-color: #cb171e; }
   pointer-events: none;
 }
 
+/* ===== Dark Mode ===== */
+body.dark {
+  --bg-color: #1e1e1e;
+  --text-color: #d4d4d4;
+  --toolbar-bg: #252526;
+  --toolbar-border: #3c3c3c;
+  --border-color: #3c3c3c;
+  --code-bg: #1e1e1e;
+}
+
+body.dark #banner {
+  background: var(--toolbar-bg);
+  border-bottom-color: var(--toolbar-border);
+}
+
+body.dark .banner-title {
+  color: #d4d4d4;
+}
+
+body.dark .banner-tagline {
+  color: #808080;
+}
+
+body.dark .right-toolbar {
+  background: #252526;
+  border-color: var(--toolbar-border);
+}
+
+body.dark .rtb-btn {
+  color: #9d9d9d;
+}
+
+body.dark .rtb-btn:hover {
+  background: #3c3c3c;
+  color: #d4d4d4;
+}
+
+body.dark .rtb-btn.active {
+  background: #3c3c3c;
+  border-color: #505050;
+  color: #d4d4d4;
+}
+
+body.dark .gear-btn {
+  background: #252526;
+  border-color: var(--toolbar-border);
+  color: #9d9d9d;
+}
+
+body.dark .gear-btn:hover {
+  background: #3c3c3c;
+  color: #d4d4d4;
+}
+
+body.dark .bookmarks-panel {
+  background: #252526;
+  border-right-color: var(--toolbar-border);
+}
+
+body.dark .bookmarks-header {
+  border-bottom-color: var(--toolbar-border);
+}
+
+body.dark .bookmarks-title {
+  color: #d4d4d4;
+}
+
+body.dark .bookmarks-close {
+  color: #808080;
+}
+
+body.dark .bookmarks-list a {
+  color: #9d9d9d;
+}
+
+body.dark .bookmarks-list a:hover {
+  background: #3c3c3c;
+  color: #d4d4d4;
+}
+
+body.dark .bookmarks-list a.active {
+  background: #2a2d2e;
+  color: #4fc1ff;
+  border-left-color: #4fc1ff;
+}
+
+body.dark #article-header {
+  border-bottom-color: #3c3c3c;
+}
+
+body.dark #article-title {
+  color: #f0f0f0;
+}
+
+body.dark #article-byline {
+  color: #808080;
+}
+
+body.dark #article-source a {
+  color: #4fc1ff;
+}
+
+body.dark #article-body a {
+  color: #4fc1ff;
+}
+
+body.dark #article-body code {
+  background: #333333;
+  color: #ce9178;
+}
+
+body.dark #article-body pre {
+  background: #1e1e1e;
+  border-color: #3c3c3c;
+}
+
+body.dark #article-body pre code {
+  background: none;
+  color: #d4d4d4;
+  padding: 0;
+  border-radius: 0;
+}
+
+/* Dark mode syntax highlighting (VS Code Dark+ palette) */
+body.dark .hljs-keyword { color: #569cd6; font-weight: bold; }
+body.dark .hljs-built_in { color: #4ec9b0; }
+body.dark .hljs-type { color: #4ec9b0; }
+body.dark .hljs-literal { color: #569cd6; }
+body.dark .hljs-number { color: #b5cea8; }
+body.dark .hljs-string { color: #ce9178; }
+body.dark .hljs-comment { color: #6a9955; font-style: italic; }
+body.dark .hljs-doctag { color: #608b4e; }
+body.dark .hljs-function { color: #dcdcaa; }
+body.dark .hljs-title { color: #dcdcaa; }
+body.dark .hljs-params { color: #9cdcfe; }
+body.dark .hljs-variable { color: #9cdcfe; }
+body.dark .hljs-attr { color: #9cdcfe; }
+body.dark .hljs-class .hljs-title { color: #4ec9b0; }
+body.dark .hljs-meta { color: #c586c0; }
+body.dark .hljs-selector-tag { color: #d7ba7d; }
+body.dark .hljs-selector-class { color: #d7ba7d; }
+body.dark .hljs-symbol { color: #569cd6; }
+body.dark .hljs-template-variable { color: #9cdcfe; }
+body.dark .hljs-deletion { color: #ce9178; background: #5a1d1d; }
+body.dark .hljs-addition { color: #b5cea8; background: #1d3b1d; }
+
+body.dark #article-body blockquote {
+  background: #252526;
+  border-left-color: #505050;
+  color: #9d9d9d;
+}
+
+body.dark #article-body th {
+  background: #2d2d2d;
+}
+
+body.dark #article-body th,
+body.dark #article-body td {
+  border-color: #3c3c3c;
+}
+
+body.dark .appearance-popover {
+  background: #252526;
+  border-color: var(--toolbar-border);
+}
+
+body.dark .appearance-section {
+  border-bottom-color: #3c3c3c;
+}
+
+body.dark .appearance-section h4 {
+  color: #808080;
+}
+
+body.dark .popover-row label {
+  color: #808080;
+}
+
+body.dark .popover-row select {
+  background: #333333;
+  border-color: #3c3c3c;
+  color: #d4d4d4;
+}
+
+body.dark .weight-group {
+  border-color: #3c3c3c;
+}
+
+body.dark .weight-option {
+  background: #252526;
+  color: #9d9d9d;
+  border-right-color: #3c3c3c;
+}
+
+body.dark .weight-option:hover {
+  background: #3c3c3c;
+}
+
+body.dark .weight-option.active {
+  background: #d4d4d4;
+  color: #1e1e1e;
+}
+
+body.dark .reader-hints-card {
+  background: #252526;
+  border-color: #3c3c3c;
+}
+
+body.dark .hints-card-title {
+  color: #d4d4d4;
+}
+
+body.dark .dialog {
+  background: #252526;
+  color: #d4d4d4;
+}
+
+body.dark .dialog h3 {
+  color: #d4d4d4;
+}
+
+body.dark .dialog-row > label {
+  color: #808080;
+}
+
+body.dark .dialog-row select {
+  background: #333333;
+  border-color: #3c3c3c;
+  color: #d4d4d4;
+}
+
+body.dark .margin-preset-btn {
+  background: #252526;
+  color: #9d9d9d;
+  border-right-color: #3c3c3c;
+}
+
+body.dark .margin-preset-btn.active {
+  background: #d4d4d4;
+  color: #1e1e1e;
+}
+
+body.dark .margin-input-group input[type="number"] {
+  background: #333333;
+  border-color: #3c3c3c;
+  color: #d4d4d4;
+}
+
+body.dark .dialog-btn-secondary {
+  background: #333333;
+  border-color: #3c3c3c;
+  color: #d4d4d4;
+}
+
+body.dark .reader-toast {
+  background: #d4d4d4;
+  color: #1e1e1e;
+}
+
+body.dark #article-body img:hover {
+  outline-color: #4fc1ff80;
+}
+
+body.dark .image-resize-bar {
+  background: #252526;
+  border-color: var(--toolbar-border);
+  color: #d4d4d4;
+}
+
+body.dark .image-resize-bar button {
+  background: #333333;
+  border-color: #3c3c3c;
+  color: #d4d4d4;
+}
+
+/* ===== Responsive: auto-hide bookmarks on narrow viewports ===== */
+@media (max-width: 900px) {
+  .bookmarks-panel:not(.hidden) {
+    width: 220px;
+  }
+}
+
+@media (max-width: 700px) {
+  .bookmarks-panel {
+    transform: translateX(-100%) !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+
+  .bookmarks-panel:not(.hidden) {
+    transform: translateX(0) !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    position: fixed;
+    width: 80vw;
+    max-width: 280px;
+    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.15);
+  }
+}
+
 /* ===== Print styles ===== */
 @media print {
+  /* Force light mode for print regardless of dark mode state */
+  body.dark {
+    --bg-color: #ffffff !important;
+    --text-color: #1a1a1a !important;
+    --toolbar-bg: #f8f9fa !important;
+    --toolbar-border: #dee2e6 !important;
+    --border-color: #e8e4d0 !important;
+    --code-bg: #fffdf5 !important;
+    background: #ffffff !important;
+    color: #1a1a1a !important;
+  }
+
+  body.dark #article-title { color: #1a1a1a !important; }
+  body.dark #article-byline { color: #6c757d !important; }
+  body.dark #article-source a { color: #1a73e8 !important; }
+  body.dark #article-body a { color: #1a73e8 !important; }
+  body.dark #article-body code { background: #f0f0f0 !important; color: #c7254e !important; }
+  body.dark #article-body pre { background: #fffdf5 !important; border-color: #e8e4d0 !important; }
+  body.dark #article-body pre code { color: inherit !important; }
+  body.dark #article-body blockquote { background: #f8f9fa !important; border-left-color: #dee2e6 !important; color: #495057 !important; }
+  body.dark #article-body th { background: #f8f9fa !important; }
+  body.dark #article-body th, body.dark #article-body td { border-color: #dee2e6 !important; }
+  body.dark #article-header { border-bottom-color: #eee !important; }
+
+  /* Reset syntax highlighting to light colors for print */
+  body.dark .hljs-keyword { color: #0000ff !important; }
+  body.dark .hljs-built_in, body.dark .hljs-type { color: #0070c1 !important; }
+  body.dark .hljs-number { color: #098658 !important; }
+  body.dark .hljs-string { color: #a31515 !important; }
+  body.dark .hljs-comment { color: #008000 !important; }
+  body.dark .hljs-function, body.dark .hljs-title { color: #795e26 !important; }
+  body.dark .hljs-variable, body.dark .hljs-attr, body.dark .hljs-params { color: #001080 !important; }
+  body.dark .hljs-meta { color: #af00db !important; }
+
   #banner,
   .right-toolbar,
   .gear-btn,
-  .bookmarks-panel {
+  .bookmarks-panel,
+  .progress-bar {
     display: none !important;
   }
 

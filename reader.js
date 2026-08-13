@@ -93,10 +93,35 @@
   const btnPrint = document.getElementById('btn-print');
   const btnPdf = document.getElementById('btn-pdf');
   const btnCleanup = document.getElementById('btn-cleanup');
+  const btnDarkMode = document.getElementById('btn-darkmode');
   const bookmarksPanel = document.getElementById('bookmarks-panel');
   const bookmarksList = document.getElementById('bookmarks-list');
   const bookmarksClose = document.querySelector('.bookmarks-close');
   const appearancePopover = document.getElementById('appearance-popover');
+
+  // ===== Dark Mode =====
+  function toggleDarkMode() {
+    const isDark = document.body.classList.toggle('dark');
+    btnDarkMode.classList.toggle('active', isDark);
+    chrome.storage.sync.set({ darkMode: isDark });
+  }
+
+  btnDarkMode.addEventListener('click', toggleDarkMode);
+
+  // Restore dark mode preference (falls back to system preference if not explicitly set)
+  chrome.storage.sync.get('darkMode', (result) => {
+    let shouldBeDark = false;
+    if (result.darkMode !== undefined) {
+      shouldBeDark = result.darkMode;
+    } else {
+      // Auto-detect from system preference
+      shouldBeDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+    if (shouldBeDark) {
+      document.body.classList.add('dark');
+      btnDarkMode.classList.add('active');
+    }
+  });
 
   // ===== Banner: fade after 10s like old toolbar =====
   const banner = document.getElementById('banner');
@@ -148,6 +173,45 @@
 
   // Start the initial collapse timer
   startCollapseTimer();
+
+  // ===== Keyboard Shortcuts (Alt+key) =====
+  document.addEventListener('keydown', (e) => {
+    // Esc works always (no modifier needed)
+    if (e.key === 'Escape') {
+      if (!appearancePopover.classList.contains('hidden')) {
+        appearancePopover.classList.add('hidden');
+        btnAppearance.classList.remove('active');
+        startCollapseTimer();
+      } else if (!bookmarksPanel.classList.contains('hidden')) {
+        bookmarksPanel.classList.add('hidden');
+        btnBookmarks.classList.remove('active');
+        chrome.storage.sync.set({ bookmarksPanelOpen: false });
+      }
+      return;
+    }
+
+    // Alt+key shortcuts
+    if (!e.altKey || e.ctrlKey || e.metaKey) return;
+
+    switch (e.key.toLowerCase()) {
+      case 'b':
+        e.preventDefault();
+        toggleBookmarks();
+        break;
+      case 'd':
+        e.preventDefault();
+        toggleDarkMode();
+        break;
+      case 'f':
+        e.preventDefault();
+        btnAppearance.click();
+        break;
+      case 'e':
+        e.preventDefault();
+        toggleEditMode();
+        break;
+    }
+  });
 
   // ===== Bookmarks Panel =====
   function buildBookmarks() {
@@ -230,8 +294,19 @@
     }
   }
 
+  // ===== Reading Progress Bar =====
+  const progressBar = document.getElementById('progress-bar');
+
+  function updateProgress() {
+    const scrollTop = window.scrollY;
+    const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+    const progress = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
+    progressBar.style.width = Math.min(progress, 100) + '%';
+  }
+
   let scrollTimeout;
   window.addEventListener('scroll', () => {
+    updateProgress();
     clearTimeout(scrollTimeout);
     scrollTimeout = setTimeout(updateActiveBookmark, 100);
   });
@@ -449,6 +524,26 @@
     return map[lang] || lang;
   }
 
+  // ===== Edit Mode =====
+  let editModeActive = false;
+  const btnEditMode = document.getElementById('btn-editmode');
+
+  function toggleEditMode() {
+    editModeActive = !editModeActive;
+    btnEditMode.classList.toggle('active', editModeActive);
+    if (!editModeActive) {
+      articleBody.classList.remove('delete-hover-active');
+    }
+    showToast(editModeActive ? 'Edit mode ON — hover to delete, double-click to edit' : 'Edit mode OFF');
+  }
+
+  btnEditMode.addEventListener('click', toggleEditMode);
+
+  function isEditActive(e) {
+    // Edit mode is active if toggle is on OR Alt key is held
+    return editModeActive || (e && e.altKey);
+  }
+
   // ===== Click-to-delete (hover X button) =====
   function makeDeletable() {
     const deletableSelectors = 'p, img, figure, blockquote, pre, ul, ol, table, h1, h2, h3, h4, h5, h6';
@@ -466,9 +561,30 @@
     document.body.appendChild(deleteBtn);
 
     let hoveredEl = null;
+    let altHeld = false;
+
+    // Track Alt key state for Alt+hover
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Alt' && !editModeActive) {
+        altHeld = true;
+        articleBody.classList.add('delete-hover-active');
+      }
+    });
+
+    document.addEventListener('keyup', (e) => {
+      if (e.key === 'Alt') {
+        altHeld = false;
+        if (!editModeActive) {
+          articleBody.classList.remove('delete-hover-active');
+          hideDeleteBtn();
+        }
+      }
+    });
 
     articleBody.addEventListener('mouseenter', () => {
-      articleBody.classList.add('delete-hover-active');
+      if (editModeActive || altHeld) {
+        articleBody.classList.add('delete-hover-active');
+      }
     });
 
     articleBody.addEventListener('mouseleave', (e) => {
@@ -478,6 +594,10 @@
     });
 
     articleBody.addEventListener('mouseover', (e) => {
+      if (!editModeActive && !altHeld) {
+        hideDeleteBtn();
+        return;
+      }
       const target = e.target.closest('[data-deletable]');
       if (!target || !articleBody.contains(target)) {
         hideDeleteBtn();
@@ -564,6 +684,7 @@
   // ===== Double-click to edit text =====
   function makeEditable() {
     articleBody.addEventListener('dblclick', (e) => {
+      if (!editModeActive && !e.altKey) return; // Only in edit mode or Alt+dblclick
       const target = e.target.closest('p, h1, h2, h3, h4, h5, h6, li, blockquote, td, th');
       if (!target || !articleBody.contains(target)) return;
       if (target.closest('pre') || target.closest('.code-block-wrapper')) return;
@@ -1015,10 +1136,22 @@
     }
   });
 
+  const pdfTocCheckbox = document.getElementById('pdf-toc');
+
   pdfGenerateBtn.addEventListener('click', async () => {
     pdfDialogOverlay.classList.add('hidden');
     btnPdf.disabled = true;
     btnPdf.title = 'Generating...';
+
+    // Always export PDF in light mode
+    const wasDark = document.body.classList.contains('dark');
+    if (wasDark) document.body.classList.remove('dark');
+
+    // Inject TOC if requested
+    let tocElement = null;
+    if (pdfTocCheckbox.checked) {
+      tocElement = buildTocPage();
+    }
 
     try {
       await generatePdf();
@@ -1026,10 +1159,82 @@
       console.error('PDF generation failed:', err);
       alert('PDF generation failed: ' + err.message);
     } finally {
+      // Remove TOC element if it was added
+      if (tocElement) tocElement.remove();
+      // Restore dark mode if it was active
+      if (wasDark) document.body.classList.add('dark');
       btnPdf.disabled = false;
       btnPdf.title = 'Save as PDF';
     }
   });
+
+  function buildTocPage() {
+    const headings = articleBody.querySelectorAll('h1, h2, h3, h4, h5, h6');
+    if (headings.length === 0) return null;
+
+    const toc = document.createElement('div');
+    toc.className = 'pdf-toc-page';
+
+    // Article title + meta header
+    const header = document.createElement('div');
+    header.className = 'pdf-toc-header';
+
+    const title = document.createElement('h1');
+    title.className = 'pdf-toc-article-title';
+    title.textContent = articleData ? articleData.title : document.title;
+    header.appendChild(title);
+
+    if (articleData && (articleData.byline || articleData.url)) {
+      const meta = document.createElement('p');
+      meta.className = 'pdf-toc-article-meta';
+      const parts = [];
+      if (articleData.byline) parts.push(articleData.byline);
+      if (articleData.url) {
+        const domain = new URL(articleData.url).hostname;
+        parts.push(domain);
+      }
+      meta.textContent = parts.join(' \u2022 ');
+      header.appendChild(meta);
+    }
+
+    toc.appendChild(header);
+
+    // Contents heading
+    const contentsHeading = document.createElement('h2');
+    contentsHeading.className = 'pdf-toc-heading';
+    contentsHeading.textContent = 'Contents';
+    toc.appendChild(contentsHeading);
+
+    // TOC list with dotted leaders
+    const list = document.createElement('ul');
+    list.className = 'pdf-toc-list';
+
+    headings.forEach((heading) => {
+      const level = parseInt(heading.tagName.charAt(1));
+      const li = document.createElement('li');
+      li.className = 'pdf-toc-item pdf-toc-level-' + level;
+
+      const textSpan = document.createElement('span');
+      textSpan.className = 'pdf-toc-item-text';
+      textSpan.textContent = heading.textContent.trim();
+
+      const dotsSpan = document.createElement('span');
+      dotsSpan.className = 'pdf-toc-item-dots';
+      dotsSpan.textContent = '\u00B7'.repeat(200); // Fill with middle dots, overflow hidden trims
+
+      li.appendChild(textSpan);
+      li.appendChild(dotsSpan);
+      list.appendChild(li);
+    });
+
+    toc.appendChild(list);
+
+    // Insert before article content
+    const readerContent = document.getElementById('reader-content');
+    readerContent.insertBefore(toc, readerContent.firstChild);
+
+    return toc;
+  }
 
   async function generatePdf() {
     const title = articleData ? articleData.title : 'Article';

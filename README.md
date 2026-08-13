@@ -6,18 +6,22 @@ A Chrome extension that transforms cluttered web articles into a clean, distract
 
 - **Article extraction** — Uses Mozilla Readability to strip ads, navigation, and clutter from any article
 - **Bookmarks panel** — Left-side outline panel built from article headings (H1-H6), with click-to-scroll and active heading tracking
+- **Dark mode** — Full dark theme (neutral grays, VS Code Dark+ syntax highlighting). Auto-detects system preference.
+- **Reading progress** — Thin gradient bar at the top tracks scroll position
 - **Syntax highlighting** — Code blocks are highlighted with language-specific colored left borders (Python, C++, Rust, JS, etc.)
-- **Native PDF export** — Generates real PDFs via Chrome's printing engine with selectable text, searchable content, preserved links, PDF bookmarks/outline from headings, and tagged/accessible output
+- **Native PDF export** — Generates real PDFs via Chrome's printing engine with selectable text, searchable content, preserved links, PDF bookmarks/outline, and optional Table of Contents page
+- **Bundled fonts** — All 13 font families work offline (latin subset, ~500KB total)
 - **Custom fonts** — Adjust body and code font family, size, and weight from the Appearance popover
-- **Inline text editing** — Double-click any paragraph or heading to edit text directly
-- **Element removal** — Hover over any paragraph, image, or block to delete it with the red X button
+- **Edit mode** — Toggle pencil icon (or Alt+E) to enable hover-to-delete and double-click-to-edit. Alt+hover also works as a shortcut.
 - **Grouped deletion** — Shift+click the delete button to remove all similar elements at once
 - **Undo support** — Ctrl+Z to undo deletions, text edits, image resizes, and cleanup operations (up to 50 actions)
 - **Image resize** — Click any image to select it, then resize to 25%, 50%, 75%, or 100% width. Ctrl+click to select multiple images
 - **Noise cleanup** — Sparkles button strips common platform noise (e.g., "click to fullsize", "tap to view", "image by author")
+- **Keyboard shortcuts** — Alt+B (bookmarks), Alt+D (dark mode), Alt+F (fonts), Alt+E (edit mode), Esc (close panels)
 - **Smart page breaks** — Headings stay with their content; code blocks and images don't split across pages
 - **Ligature-free code** — Code blocks disable font ligatures to correctly display tokens like `<|end_of_text|>`
 - **Auto-collapsing UI** — Right toolbar and banner fade/collapse after 10s of inactivity, maximizing reading space
+- **Responsive** — Bookmarks panel adapts to narrow viewports (<700px becomes overlay)
 
 ## Installation
 
@@ -38,7 +42,7 @@ A Chrome extension that transforms cluttered web articles into a clean, distract
 
 ### From release ZIP
 
-1. Download `ZenReader v1.3.0.zip` from [Releases](https://github.com/balaji-ch/zen-reader/releases)
+1. Download `ZenReader v1.4.0.zip` from [Releases](https://github.com/balaji-ch/zen-reader/releases)
 2. Extract to a folder
 3. Load unpacked in Chrome as described above
 
@@ -51,17 +55,20 @@ A Chrome extension that transforms cluttered web articles into a clean, distract
 
 | Action | How |
 |--------|-----|
-| Toggle bookmarks | Click bookmark icon (ribbon) — left panel shows/hides |
-| Adjust fonts | Click font icon (T) — Appearance popover opens |
-| View tips | Click lightbulb icon |
-| Clean up noise | Click sparkles icon |
-| Resize images | Click image to select, use resize bar (Ctrl+click for multi-select) |
-| Edit text | Double-click any paragraph or heading |
-| Delete element | Hover and click the red X |
-| Delete all similar | Shift+click the red X |
-| Undo | Ctrl+Z |
-| Export PDF | Click PDF icon, configure margins/page size, generate |
-| Print | Click printer icon for browser print dialog |
+| Toggle bookmarks | 🔖 Bookmark icon or `Alt+B` |
+| Adjust fonts | 🔤 Font icon or `Alt+F` |
+| Dark mode | 🌙 Moon icon or `Alt+D` |
+| Edit mode | ✏️ Pencil icon or `Alt+E` — enables delete/edit |
+| View tips | 💡 Lightbulb icon |
+| Clean up noise | ✨ Sparkles icon |
+| Delete element | Edit mode ON → hover + click ❌ (or Alt+hover) |
+| Delete all similar | Shift+click the ❌ red X |
+| Edit text | Edit mode ON → double-click paragraph (or Alt+dblclick) |
+| Resize images | Click image to select, use resize bar (Ctrl+click for multi) |
+| Undo | ⌨️ Ctrl+Z |
+| Export PDF | 📄 PDF icon → configure margins/page size/TOC → generate |
+| Print | 🖨️ Printer icon → browser print dialog |
+| Close panels | `Esc` |
 
 Tips appear automatically on load (auto-dismiss after 7 seconds).
 
@@ -113,7 +120,6 @@ The generated PDF includes:
 
 - **Cannot extract from restricted pages.** Chrome prevents content script injection on `chrome://`, `edge://`, `chrome-extension://`, Chrome Web Store pages, and `file://` URLs.
 - **Math rendering (MathJax/KaTeX) not supported.** Articles with LaTeX math notation show raw math source rather than rendered equations.
-- **Fonts require internet.** Google Fonts CDN must be reachable; offline use falls back to system fonts.
 - **Debugger notification.** Chrome shows a brief "started debugging this browser" bar during PDF generation. This cannot be suppressed by extensions.
 
 ## Project Structure
@@ -126,8 +132,10 @@ zen-reader/
 ├── popup.html / popup.js  # Extension popup
 ├── reader.html / reader.js # Reader view + bookmarks + PDF export
 ├── css/
-│   ├── reader.css         # All styling (banner, toolbar, bookmarks, dialog, print)
+│   ├── fonts.css          # Bundled @font-face declarations
+│   ├── reader.css         # All styling (banner, toolbar, bookmarks, dark mode, print)
 │   └── highlight-vs.css   # VS-style syntax theme
+├── fonts/                 # Bundled woff2 fonts (13 families, latin subset)
 ├── lib/
 │   ├── Readability.js     # Mozilla Readability
 │   └── highlight.min.js   # highlight.js
@@ -144,6 +152,20 @@ node generate-icons.js
 ```
 
 ## Changelog
+
+### v1.4.0
+- Dark mode with neutral gray theme and VS Code Dark+ syntax highlighting
+- Auto-detects system `prefers-color-scheme` on first use
+- Reading progress bar (thin gradient at top)
+- All 13 font families bundled locally (~500KB woff2, full offline support)
+- Google Fonts CDN made non-blocking (instant page load)
+- PDF Table of Contents option (checkbox in PDF dialog)
+- PDF and Print always export in light mode regardless of dark mode state
+- Edit mode toggle (pencil icon) — hover-to-delete and double-click-to-edit only active in edit mode
+- Alt+hover as shortcut to delete without entering edit mode
+- Keyboard shortcuts: Alt+B, Alt+D, Alt+F, Alt+E, Esc (shown in tooltips)
+- Responsive bookmarks panel (narrows <900px, overlay <700px)
+- Toolbar collapse paused while Appearance popover is open
 
 ### v1.3.0
 - Bookmarks panel: heading outline visible in reader (left sidebar, toggleable, persisted state)
