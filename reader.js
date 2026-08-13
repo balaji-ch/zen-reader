@@ -22,7 +22,6 @@
     const action = undoStack.pop();
     switch (action.type) {
       case 'delete': {
-        // Re-insert the removed element(s) at their original positions
         action.items.forEach((item) => {
           if (item.nextSibling && item.parent.contains(item.nextSibling)) {
             item.parent.insertBefore(item.element, item.nextSibling);
@@ -34,13 +33,11 @@
         break;
       }
       case 'edit': {
-        // Restore original innerHTML
         action.element.innerHTML = action.oldHTML;
         showToast('Undo: text reverted');
         break;
       }
       case 'resize': {
-        // Restore original width/maxWidth for each image
         action.items.forEach((item) => {
           item.element.style.width = item.oldWidth;
           item.element.style.maxWidth = item.oldMaxWidth;
@@ -49,7 +46,6 @@
         break;
       }
       case 'cleanup': {
-        // Re-insert all cleaned-up elements
         action.items.forEach((item) => {
           if (item.nextSibling && item.parent.contains(item.nextSibling)) {
             item.parent.insertBefore(item.element, item.nextSibling);
@@ -66,7 +62,6 @@
   // Global Ctrl+Z handler
   document.addEventListener('keydown', (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
-      // Don't intercept if user is editing text (contenteditable)
       const active = document.activeElement;
       if (active && active.getAttribute('contenteditable') === 'true') return;
       e.preventDefault();
@@ -87,59 +82,187 @@
   const codeSizeLabel = document.getElementById('code-size-label');
   const textWeightGroup = document.getElementById('text-weight-group');
   const codeWeightGroup = document.getElementById('code-weight-group');
-  const textFontTrigger = document.getElementById('text-font-trigger');
-  const codeFontTrigger = document.getElementById('code-font-trigger');
-  const textFontName = document.getElementById('text-font-name');
-  const codeFontNameEl = document.getElementById('code-font-name');
-  const textPopover = document.getElementById('text-popover');
-  const codePopover = document.getElementById('code-popover');
-  const btnPrint = document.getElementById('btn-print');
-  const btnPdf = document.getElementById('btn-pdf');
-  const btnTips = document.getElementById('btn-tips');
   const googleFontsLink = document.getElementById('google-fonts-link');
 
-  // ===== Popover logic =====
-  function togglePopover(popover, trigger) {
-    const isVisible = popover.classList.contains('visible');
-    closeAllPopovers();
-    if (!isVisible) {
-      popover.classList.add('visible');
-      trigger.classList.add('active');
-      // Position popover below the trigger
-      const rect = trigger.getBoundingClientRect();
-      popover.style.left = rect.left + 'px';
-      popover.style.transform = 'none';
-      popover.style.top = (rect.bottom + 4) + 'px';
+  // New UI refs
+  const rightToolbar = document.getElementById('right-toolbar');
+  const gearBtn = document.getElementById('gear-btn');
+  const btnBookmarks = document.getElementById('btn-bookmarks');
+  const btnAppearance = document.getElementById('btn-appearance');
+  const btnTips = document.getElementById('btn-tips');
+  const btnPrint = document.getElementById('btn-print');
+  const btnPdf = document.getElementById('btn-pdf');
+  const btnCleanup = document.getElementById('btn-cleanup');
+  const bookmarksPanel = document.getElementById('bookmarks-panel');
+  const bookmarksList = document.getElementById('bookmarks-list');
+  const bookmarksClose = document.querySelector('.bookmarks-close');
+  const appearancePopover = document.getElementById('appearance-popover');
+
+  // ===== Banner: fade after 10s like old toolbar =====
+  const banner = document.getElementById('banner');
+  const BANNER_FADE_DELAY = 10000;
+
+  setTimeout(() => {
+    banner.classList.add('faded');
+  }, BANNER_FADE_DELAY);
+
+  // ===== Right Toolbar: Collapse to gear after 10s =====
+  const TOOLBAR_COLLAPSE_DELAY = 10000;
+  let collapseTimer = null;
+
+  function isPopoverOpen() {
+    return !appearancePopover.classList.contains('hidden');
+  }
+
+  function startCollapseTimer() {
+    clearTimeout(collapseTimer);
+    if (isPopoverOpen()) return; // Don't collapse while popover is open
+    collapseTimer = setTimeout(collapseToolbar, TOOLBAR_COLLAPSE_DELAY);
+  }
+
+  function collapseToolbar() {
+    if (isPopoverOpen()) return; // Safety check
+    rightToolbar.classList.add('collapsed');
+    gearBtn.classList.remove('hidden');
+  }
+
+  function expandToolbar() {
+    rightToolbar.classList.remove('collapsed');
+    gearBtn.classList.add('hidden');
+    startCollapseTimer();
+  }
+
+  // Expand on gear click
+  gearBtn.addEventListener('click', () => {
+    expandToolbar();
+  });
+
+  // Reset timer on toolbar interaction
+  rightToolbar.addEventListener('mouseenter', () => {
+    clearTimeout(collapseTimer);
+  });
+
+  rightToolbar.addEventListener('mouseleave', () => {
+    startCollapseTimer();
+  });
+
+  // Start the initial collapse timer
+  startCollapseTimer();
+
+  // ===== Bookmarks Panel =====
+  function buildBookmarks() {
+    const headings = articleBody.querySelectorAll('h1, h2, h3, h4, h5, h6');
+    bookmarksList.innerHTML = '';
+
+    if (headings.length === 0) {
+      bookmarksList.innerHTML = '<p style="padding: 12px 16px; color: #6c757d; font-size: 12px;">No headings found in this article.</p>';
+      return;
+    }
+
+    headings.forEach((heading, index) => {
+      // Add an id for anchor linking if missing
+      if (!heading.id) {
+        heading.id = 'zen-heading-' + index;
+      }
+      const level = parseInt(heading.tagName.charAt(1));
+      const link = document.createElement('a');
+      link.href = '#' + heading.id;
+      link.textContent = heading.textContent.trim();
+      link.setAttribute('data-level', level);
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        heading.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        // Highlight active
+        bookmarksList.querySelectorAll('a').forEach(a => a.classList.remove('active'));
+        link.classList.add('active');
+      });
+      bookmarksList.appendChild(link);
+    });
+  }
+
+  function toggleBookmarks() {
+    const isHidden = bookmarksPanel.classList.contains('hidden');
+    if (isHidden) {
+      bookmarksPanel.classList.remove('hidden');
+      btnBookmarks.classList.add('active');
+      chrome.storage.sync.set({ bookmarksPanelOpen: true });
+    } else {
+      bookmarksPanel.classList.add('hidden');
+      btnBookmarks.classList.remove('active');
+      chrome.storage.sync.set({ bookmarksPanelOpen: false });
     }
   }
 
-  function closeAllPopovers() {
-    textPopover.classList.remove('visible');
-    codePopover.classList.remove('visible');
-    textFontTrigger.classList.remove('active');
-    codeFontTrigger.classList.remove('active');
+  btnBookmarks.addEventListener('click', toggleBookmarks);
+  bookmarksClose.addEventListener('click', () => {
+    bookmarksPanel.classList.add('hidden');
+    btnBookmarks.classList.remove('active');
+    chrome.storage.sync.set({ bookmarksPanelOpen: false });
+  });
+
+  // Restore bookmarks panel state from storage
+  chrome.storage.sync.get('bookmarksPanelOpen', (result) => {
+    // Default is open (true) if never set
+    const isOpen = result.bookmarksPanelOpen !== false;
+    if (isOpen) {
+      bookmarksPanel.classList.remove('hidden');
+      btnBookmarks.classList.add('active');
+    } else {
+      bookmarksPanel.classList.add('hidden');
+      btnBookmarks.classList.remove('active');
+    }
+  });
+
+  // Update active bookmark on scroll
+  function updateActiveBookmark() {
+    const headings = articleBody.querySelectorAll('h1, h2, h3, h4, h5, h6');
+    let current = null;
+    headings.forEach((heading) => {
+      const rect = heading.getBoundingClientRect();
+      if (rect.top <= 100) {
+        current = heading;
+      }
+    });
+    if (current) {
+      bookmarksList.querySelectorAll('a').forEach(a => {
+        a.classList.toggle('active', a.getAttribute('href') === '#' + current.id);
+      });
+    }
   }
 
-  textFontTrigger.addEventListener('click', (e) => {
-    e.stopPropagation();
-    togglePopover(textPopover, textFontTrigger);
+  let scrollTimeout;
+  window.addEventListener('scroll', () => {
+    clearTimeout(scrollTimeout);
+    scrollTimeout = setTimeout(updateActiveBookmark, 100);
   });
 
-  codeFontTrigger.addEventListener('click', (e) => {
+  // ===== Appearance Popover =====
+  btnAppearance.addEventListener('click', (e) => {
     e.stopPropagation();
-    togglePopover(codePopover, codeFontTrigger);
+    const isHidden = appearancePopover.classList.contains('hidden');
+    if (isHidden) {
+      appearancePopover.classList.remove('hidden');
+      btnAppearance.classList.add('active');
+      clearTimeout(collapseTimer); // Pause collapse while popover is open
+    } else {
+      appearancePopover.classList.add('hidden');
+      btnAppearance.classList.remove('active');
+      startCollapseTimer(); // Resume collapse timer
+    }
   });
 
-  // Close popovers when clicking outside
+  // Close appearance popover on outside click
   document.addEventListener('click', (e) => {
-    if (!e.target.closest('.font-popover') && !e.target.closest('.font-trigger')) {
-      closeAllPopovers();
+    if (!e.target.closest('.appearance-popover') && !e.target.closest('#btn-appearance')) {
+      if (!appearancePopover.classList.contains('hidden')) {
+        appearancePopover.classList.add('hidden');
+        btnAppearance.classList.remove('active');
+        startCollapseTimer(); // Resume collapse timer
+      }
     }
   });
 
-  // Prevent popover clicks from closing
-  textPopover.addEventListener('click', (e) => e.stopPropagation());
-  codePopover.addEventListener('click', (e) => e.stopPropagation());
+  appearancePopover.addEventListener('click', (e) => e.stopPropagation());
 
   // ===== Load article data =====
   chrome.storage.local.get('articleData', (result) => {
@@ -155,12 +278,10 @@
   chrome.storage.sync.get(['bodyFont', 'codeFont', 'fontSize', 'codeFontSize', 'textWeight', 'codeWeight'], (prefs) => {
     if (prefs.bodyFont) {
       fontSelect.value = prefs.bodyFont;
-      textFontName.textContent = prefs.bodyFont;
       applyBodyFont(prefs.bodyFont);
     }
     if (prefs.codeFont) {
       codeFontSelect.value = prefs.codeFont;
-      codeFontNameEl.textContent = prefs.codeFont;
       applyCodeFont(prefs.codeFont);
     }
     if (prefs.fontSize) {
@@ -202,7 +323,7 @@
     // Set content
     articleBody.innerHTML = articleData.content;
 
-    // Constrain small decorative/inline images (arrows, icons, etc.)
+    // Constrain small decorative/inline images
     constrainDecorativeImages();
 
     // Process code blocks
@@ -217,20 +338,20 @@
     // Make images resizable
     makeImagesResizable();
 
+    // Build bookmarks from headings
+    buildBookmarks();
+
     // Show hints toast
     showHintsToast();
   }
 
-  // ===== Constrain decorative/inline images (arrows, bullets, small icons) =====
+  // ===== Constrain decorative/inline images =====
   function constrainDecorativeImages() {
     const images = articleBody.querySelectorAll('img');
     images.forEach((img) => {
-      // Wait for image to load to check natural dimensions
       const check = () => {
         const natW = img.naturalWidth;
         const natH = img.naturalHeight;
-        // If image has very small natural dimensions, it's likely a decorative icon
-        // (arrows, bullet points, section markers, emoji-like icons)
         if (natW > 0 && natH > 0 && natW <= 40 && natH <= 40) {
           img.style.display = 'inline';
           img.style.verticalAlign = 'middle';
@@ -239,10 +360,7 @@
           img.style.maxHeight = '1.2em';
           img.style.width = 'auto';
           img.style.maxWidth = 'none';
-        }
-        // Also handle slightly larger icons (up to ~64px) that are clearly not article images
-        // These often appear as section arrows or decorative separators
-        else if (natW > 0 && natH > 0 && natW <= 64 && natH <= 64) {
+        } else if (natW > 0 && natH > 0 && natW <= 64 && natH <= 64) {
           img.style.display = 'inline-block';
           img.style.verticalAlign = 'middle';
           img.style.margin = '0 0.25em';
@@ -261,7 +379,7 @@
     });
   }
 
-  // ===== Process code blocks: detect language, add badges, highlight =====
+  // ===== Process code blocks =====
   function processCodeBlocks() {
     const preBlocks = articleBody.querySelectorAll('pre');
 
@@ -269,10 +387,8 @@
       const code = pre.querySelector('code');
       if (!code) return;
 
-      // Detect language from class attributes
       let lang = detectLanguage(code) || detectLanguage(pre);
 
-      // If no language detected, try auto-detection with highlight.js
       if (!lang && code.textContent.trim().length > 0) {
         const result = hljs.highlightAuto(code.textContent);
         if (result.language && result.relevance > 5) {
@@ -280,17 +396,13 @@
         }
       }
 
-      // Apply highlighting
       if (lang) {
         pre.setAttribute('data-lang', lang);
-
-        // Only highlight if not already highlighted
         if (!code.querySelector('.hljs-keyword, .hljs-string, .hljs-comment')) {
           try {
             const highlighted = hljs.highlight(code.textContent, { language: lang });
             code.innerHTML = highlighted.value;
           } catch (e) {
-            // Language not supported, try auto
             const result = hljs.highlightAuto(code.textContent);
             code.innerHTML = result.value;
             if (result.language) {
@@ -299,22 +411,17 @@
             }
           }
         }
-
-
       } else {
-        // Plain code block - no badge, default blue border
         if (!code.querySelector('.hljs-keyword, .hljs-string, .hljs-comment')) {
           const result = hljs.highlightAuto(code.textContent);
           if (result.language && result.relevance > 3) {
             code.innerHTML = result.value;
             lang = result.language;
             pre.setAttribute('data-lang', lang);
-
           }
         }
       }
 
-      // Ensure proper formatting
       code.style.whiteSpace = 'pre-wrap';
       code.style.wordBreak = 'break-word';
     });
@@ -325,10 +432,8 @@
     const classes = el.className || '';
     const match = classes.match(/(?:language|lang|highlight)-(\w+)/);
     if (match) return normalizeLanguage(match[1]);
-
     if (el.dataset && el.dataset.lang) return normalizeLanguage(el.dataset.lang);
     if (el.dataset && el.dataset.language) return normalizeLanguage(el.dataset.language);
-
     return null;
   }
 
@@ -343,8 +448,6 @@
     lang = lang.toLowerCase();
     return map[lang] || lang;
   }
-
-
 
   // ===== Click-to-delete (hover X button) =====
   function makeDeletable() {
@@ -369,7 +472,6 @@
     });
 
     articleBody.addEventListener('mouseleave', (e) => {
-      // Don't hide if the mouse is moving to the delete button
       if (e.relatedTarget === deleteBtn || deleteBtn.contains(e.relatedTarget)) return;
       articleBody.classList.remove('delete-hover-active');
       hideDeleteBtn();
@@ -391,7 +493,6 @@
     });
 
     deleteBtn.addEventListener('mouseleave', (e) => {
-      // Don't hide if the mouse is moving back to a deletable element inside articleBody
       if (e.relatedTarget && articleBody.contains(e.relatedTarget)) return;
       hideDeleteBtn();
     });
@@ -405,10 +506,8 @@
         hideDeleteBtn();
 
         if (e.shiftKey) {
-          // Grouped deletion: find and remove all similar elements
           const similar = findSimilarElements(elToRemove);
           const total = similar.length + 1;
-          // Record undo info before removing
           const allEls = [elToRemove, ...similar];
           const undoItems = allEls.map((el) => ({
             element: el,
@@ -429,7 +528,6 @@
             showToast(`Removed ${total} similar elements (Ctrl+Z to undo)`);
           }
         } else {
-          // Record undo info
           pushUndo({ type: 'delete', items: [{
             element: elToRemove,
             parent: elToRemove.parentNode,
@@ -471,14 +569,12 @@
       if (target.closest('pre') || target.closest('.code-block-wrapper')) return;
       if (target.getAttribute('contenteditable') === 'true') return;
 
-      // Save original content for undo
       const originalHTML = target.innerHTML;
 
       target.setAttribute('contenteditable', 'true');
       target.classList.add('reader-editing');
       target.focus();
 
-      // Select all text in the element for easy replacement
       const range = document.createRange();
       range.selectNodeContents(target);
       const sel = window.getSelection();
@@ -490,7 +586,6 @@
         target.classList.remove('reader-editing');
         target.removeEventListener('blur', onBlur);
         target.removeEventListener('keydown', onKeydown);
-        // Push undo only if content actually changed
         if (target.innerHTML !== originalHTML) {
           pushUndo({ type: 'edit', element: target, oldHTML: originalHTML });
         }
@@ -503,7 +598,6 @@
       function onKeydown(ev) {
         if (ev.key === 'Escape') {
           ev.preventDefault();
-          // Restore original on Escape
           target.innerHTML = originalHTML;
           target.blur();
         }
@@ -539,7 +633,6 @@
         const btn = e.target.closest('button[data-size]');
         if (!btn) return;
         const size = btn.dataset.size;
-        // Record undo info before resizing
         const undoItems = [];
         selectedImages.forEach((img) => {
           undoItems.push({
@@ -556,7 +649,6 @@
           }
         });
         pushUndo({ type: 'resize', items: undoItems });
-        // Keep selection to allow further resizing
         updateResizeBar();
       });
 
@@ -573,7 +665,6 @@
       const countEl = resizeBar.querySelector('.resize-bar-count');
       countEl.textContent = selectedImages.size + ' image' + (selectedImages.size > 1 ? 's' : '') + ' selected';
 
-      // Position the bar near the top of viewport
       resizeBar.style.top = '52px';
       resizeBar.style.left = '50%';
       resizeBar.style.transform = 'translateX(-50%)';
@@ -600,32 +691,27 @@
     articleBody.addEventListener('click', (e) => {
       const img = e.target.closest('#article-body img');
       if (!img) {
-        // Click outside image — clear unless Ctrl held
         if (!e.ctrlKey && !e.metaKey) {
           clearSelection();
         }
         return;
       }
 
-      // Prevent deselecting when clicking on a selected image without Ctrl
       e.preventDefault();
       e.stopPropagation();
 
       if (e.ctrlKey || e.metaKey) {
-        // Toggle selection
         if (selectedImages.has(img)) {
           deselectImage(img);
         } else {
           selectImage(img);
         }
       } else {
-        // Single select — clear others
         clearSelection();
         selectImage(img);
       }
     });
 
-    // Clear selection on Escape
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && selectedImages.size > 0) {
         clearSelection();
@@ -636,7 +722,7 @@
   // ===== Grouped deletion (Shift+click) =====
   function findSimilarElements(el) {
     const text = el.textContent.trim();
-    if (text.length > 80) return []; // Only group short elements
+    if (text.length > 80) return [];
     const tag = el.tagName;
     const candidates = articleBody.querySelectorAll(tag + '[data-deletable]');
     const similar = [];
@@ -644,7 +730,6 @@
       if (candidate === el) return;
       const cText = candidate.textContent.trim();
       if (cText.length > 80) return;
-      // Exact match or very similar (same normalized text)
       const normalize = (s) => s.toLowerCase().replace(/\s+/g, ' ').trim();
       if (normalize(cText) === normalize(text)) {
         similar.push(candidate);
@@ -654,7 +739,6 @@
   }
 
   // ===== Cleanup button =====
-  const btnCleanup = document.getElementById('btn-cleanup');
   btnCleanup.addEventListener('click', () => {
     const noisePatterns = [
       /click\s*(below\s*)?to\s*(see\s*)?full\s*size/i,
@@ -673,7 +757,7 @@
 
     candidates.forEach((el) => {
       const text = el.textContent.trim();
-      if (text.length > 100) return; // Only target short noise
+      if (text.length > 100) return;
       for (const pattern of noisePatterns) {
         if (pattern.test(text)) {
           toRemove.push(el);
@@ -683,7 +767,6 @@
     });
 
     if (toRemove.length > 0) {
-      // Record undo info
       const undoItems = toRemove.map((el) => ({
         element: el,
         parent: el.parentNode,
@@ -700,7 +783,6 @@
       }, 200);
     }
 
-    // Show feedback
     showToast(toRemove.length > 0
       ? `Removed ${toRemove.length} noisy element${toRemove.length > 1 ? 's' : ''} (Ctrl+Z to undo)`
       : 'No noise patterns found');
@@ -712,7 +794,6 @@
     toast.className = 'reader-toast';
     toast.textContent = message;
     document.body.appendChild(toast);
-    // Trigger animation
     requestAnimationFrame(() => toast.classList.add('visible'));
     setTimeout(() => {
       toast.classList.remove('visible');
@@ -720,24 +801,24 @@
     }, duration);
   }
 
-  // ===== Hints toast on first load =====
+  // ===== Hints (Tips) =====
   function showHintsToast() {
     showHintCards();
   }
 
   const HINTS = [
     'Double-click text to edit',
-    'Hover + red X to delete elements',
-    'Shift+click delete to remove all similar',
-    'Click image to resize (Ctrl+click for multiple)',
-    'Ignore the "debugging started" warning during PDF export',
+    'Hover + red X to delete',
+    'Shift+click X to remove all similar',
+    'Click image to resize (Ctrl for multi)',
+    'Ignore "debugging started" in PDF export',
   ];
 
   function showHintCards() {
     // Remove any existing hint card
     const existing = document.querySelector('.reader-hints-card');
     if (existing) {
-      existing.classList.add('hint-explode');
+      existing.classList.add('hint-dismiss');
       existing.addEventListener('animationend', () => existing.remove());
       return;
     }
@@ -760,23 +841,28 @@
     });
     card.appendChild(list);
 
-    // Close button - explode animation
+    // Close button - smooth dismiss
     header.querySelector('.hint-close').addEventListener('click', () => {
-      card.classList.add('hint-explode');
+      card.classList.add('hint-dismiss');
       card.addEventListener('animationend', () => card.remove());
     });
 
     document.body.appendChild(card);
     requestAnimationFrame(() => card.classList.add('visible'));
 
-    // Auto-dismiss after 7 seconds
+    // Auto-dismiss after 7 seconds with smooth fade
     setTimeout(() => {
-      if (document.body.contains(card) && !card.classList.contains('hint-explode')) {
-        card.classList.add('hint-explode');
+      if (document.body.contains(card) && !card.classList.contains('hint-dismiss')) {
+        card.classList.add('hint-dismiss');
         card.addEventListener('animationend', () => card.remove());
       }
     }, 7000);
   }
+
+  // Tips button
+  btnTips.addEventListener('click', () => {
+    showHintCards();
+  });
 
   // ===== Font controls =====
   function applyBodyFont(fontName) {
@@ -814,11 +900,9 @@
   function updateGoogleFontsLink() {
     const bodyFont = fontSelect.value.replace(/ /g, '+');
     const codeFont = codeFontSelect.value.replace(/ /g, '+');
-    const textWeight = getActiveWeight(textWeightGroup);
-    const codeWeight = getActiveWeight(codeWeightGroup);
-    // Build weight list for each font
     const textWeights = new Set(['400', '500', '600', '700']);
     const codeWeights = new Set(['400', '500']);
+    const codeWeight = getActiveWeight(codeWeightGroup);
     if (codeWeight !== '400') codeWeights.add(codeWeight);
     const url = `https://fonts.googleapis.com/css2?family=${bodyFont}:wght@${[...textWeights].join(';')}&family=${codeFont}:wght@${[...codeWeights].join(';')}&display=swap`;
     googleFontsLink.href = url;
@@ -829,10 +913,9 @@
     return active ? active.dataset.weight : '400';
   }
 
-  // --- Text popover controls ---
+  // --- Text font controls ---
   fontSelect.addEventListener('change', () => {
     const font = fontSelect.value;
-    textFontName.textContent = font;
     applyBodyFont(font);
     chrome.storage.sync.set({ bodyFont: font });
   });
@@ -853,10 +936,9 @@
     chrome.storage.sync.set({ textWeight: btn.dataset.weight });
   });
 
-  // --- Code popover controls ---
+  // --- Code font controls ---
   codeFontSelect.addEventListener('change', () => {
     const font = codeFontSelect.value;
-    codeFontNameEl.textContent = font;
     applyCodeFont(font);
     chrome.storage.sync.set({ codeFont: font });
   });
@@ -882,25 +964,6 @@
     window.print();
   });
 
-  // Tips button - re-show hint cards
-  btnTips.addEventListener('click', () => {
-    showHintCards();
-  });
-
-  // ===== Toolbar auto-fade after inactivity =====
-  const toolbar = document.getElementById('toolbar');
-  const TOOLBAR_FADE_DELAY = 10000; // 10 seconds
-
-  // Fade after initial timeout; only hovering the toolbar restores it
-  setTimeout(() => {
-    const dialogEl = document.getElementById('pdf-dialog-overlay');
-    const popoverOpen = document.querySelector('.font-popover.active') ||
-                        (dialogEl && !dialogEl.classList.contains('hidden'));
-    if (!popoverOpen) {
-      toolbar.classList.add('faded');
-    }
-  }, TOOLBAR_FADE_DELAY);
-
   // ===== PDF Export via Chrome DevTools Protocol =====
   const pdfDialogOverlay = document.getElementById('pdf-dialog-overlay');
   const pdfCancelBtn = document.getElementById('pdf-cancel');
@@ -913,7 +976,6 @@
   const marginPresets = document.getElementById('margin-presets');
   const marginCustomRow = document.getElementById('margin-custom-row');
 
-  // Margin preset definitions (in mm)
   const MARGIN_PRESETS = {
     none: { top: 0, right: 0, bottom: 0, left: 0 },
     minimal: { top: 5, right: 5, bottom: 5, left: 5 }
@@ -921,7 +983,6 @@
 
   let activeMarginPreset = 'minimal';
 
-  // Handle margin preset button clicks
   marginPresets.addEventListener('click', (e) => {
     const btn = e.target.closest('.margin-preset-btn');
     if (!btn) return;
@@ -929,12 +990,10 @@
     const preset = btn.dataset.preset;
     activeMarginPreset = preset;
 
-    // Update active state
     marginPresets.querySelectorAll('.margin-preset-btn').forEach((b) => {
       b.classList.toggle('active', b === btn);
     });
 
-    // Show/hide custom margin inputs
     if (preset === 'custom') {
       marginCustomRow.classList.remove('hidden');
     } else {
@@ -942,28 +1001,24 @@
     }
   });
 
-  // Show dialog on PDF button click
   btnPdf.addEventListener('click', () => {
     pdfDialogOverlay.classList.remove('hidden');
   });
 
-  // Cancel dialog
   pdfCancelBtn.addEventListener('click', () => {
     pdfDialogOverlay.classList.add('hidden');
   });
 
-  // Close dialog on overlay click
   pdfDialogOverlay.addEventListener('click', (e) => {
     if (e.target === pdfDialogOverlay) {
       pdfDialogOverlay.classList.add('hidden');
     }
   });
 
-  // Generate PDF from dialog
   pdfGenerateBtn.addEventListener('click', async () => {
     pdfDialogOverlay.classList.add('hidden');
     btnPdf.disabled = true;
-    btnPdf.textContent = 'Generating...';
+    btnPdf.title = 'Generating...';
 
     try {
       await generatePdf();
@@ -972,14 +1027,13 @@
       alert('PDF generation failed: ' + err.message);
     } finally {
       btnPdf.disabled = false;
-      btnPdf.textContent = 'PDF';
+      btnPdf.title = 'Save as PDF';
     }
   });
 
   async function generatePdf() {
     const title = articleData ? articleData.title : 'Article';
 
-    // Resolve margins based on selected preset (in mm)
     let mTop, mRight, mBottom, mLeft;
     if (activeMarginPreset === 'custom') {
       mTop = parseInt(marginTopInput.value) || 0;
@@ -995,7 +1049,6 @@
     }
     const pageSize = pageSizeSelect.value || 'a4';
 
-    // Get the current tab ID (extension pages need to query it)
     const tab = await chrome.tabs.getCurrent();
     const tabId = tab ? tab.id : undefined;
 
@@ -1003,7 +1056,6 @@
       throw new Error('Could not determine current tab ID');
     }
 
-    // Send message to background script to generate PDF via chrome.debugger
     const response = await chrome.runtime.sendMessage({
       type: 'GENERATE_PDF',
       tabId: tabId,

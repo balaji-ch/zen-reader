@@ -31,147 +31,287 @@ body {
   background: var(--bg-color);
 }
 
-/* Toolbar */
-#toolbar {
+/* ===== Top Banner ===== */
+#banner {
   position: sticky;
   top: 0;
   z-index: 1000;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 20px;
   background: var(--toolbar-bg);
   border-bottom: 1px solid var(--toolbar-border);
-  gap: 8px;
+  padding: 8px 20px 6px;
+  text-align: center;
   opacity: 1;
   transition: opacity 0.4s ease;
 }
 
-#toolbar.faded {
+#banner.faded {
   opacity: 0.12;
 }
 
-#toolbar.faded:hover {
+#banner.faded:hover {
   opacity: 1;
 }
 
-.toolbar-left, .toolbar-center, .toolbar-right {
+.banner-row {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
 }
 
-.toolbar-icon {
+.banner-icon {
   width: 22px;
   height: 22px;
 }
 
-.toolbar-title {
-  font-size: 14px;
-  font-weight: 600;
+.banner-title {
+  font-size: 15px;
+  font-weight: 700;
   margin: 0;
-  color: #495057;
+  color: #212529;
+  line-height: 1;
 }
 
-/* Font trigger buttons in toolbar */
-.font-trigger {
+.banner-tagline {
+  font-size: 10px;
+  color: #6c757d;
+  margin: 2px 0 0;
+  line-height: 1.2;
+  font-weight: 400;
+}
+
+/* ===== Floating Right Toolbar ===== */
+.right-toolbar {
+  position: fixed;
+  top: 80px;
+  right: 20px;
+  z-index: 3000;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px;
+  background: white;
+  border: 1px solid var(--toolbar-border);
+  border-radius: 10px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  transition: opacity 0.4s ease, transform 0.4s ease, visibility 0.4s;
+}
+
+.right-toolbar.collapsed {
+  opacity: 0;
+  transform: scale(0.3) translateX(20px);
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.rtb-btn {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 5px 10px;
-  font-size: 12px;
-  border: 1px solid var(--toolbar-border);
-  border-radius: 4px;
-  background: white;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: #495057;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
 
-.font-trigger:hover {
-  background: #e9ecef;
-  border-color: #adb5bd;
-}
-
-.font-trigger.active {
-  background: #e9ecef;
-  border-color: #adb5bd;
-}
-
-.font-trigger-label {
-  color: #6c757d;
-  font-weight: 500;
-}
-
-.font-trigger-value {
+.rtb-btn:hover {
+  background: #f0f0f0;
+  border-color: var(--toolbar-border);
   color: #212529;
-  font-weight: 500;
-  max-width: 120px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
-.font-trigger-arrow {
-  color: #adb5bd;
-  font-size: 10px;
+.rtb-btn.active {
+  background: #e9ecef;
+  border-color: #adb5bd;
+  color: #212529;
 }
 
-/* Action buttons */
-#toolbar .toolbar-right button {
-  display: inline-flex;
+/* Gear button (collapsed state) */
+.gear-btn {
+  position: fixed;
+  top: 80px;
+  right: 20px;
+  z-index: 3000;
+  width: 40px;
+  height: 40px;
+  display: flex;
   align-items: center;
-  gap: 5px;
-  padding: 6px 14px;
-  font-size: 13px;
-  font-weight: 500;
-  border: 1px solid var(--toolbar-border);
-  border-radius: 4px;
+  justify-content: center;
   background: white;
+  border: 1px solid var(--toolbar-border);
+  border-radius: 50%;
+  color: #495057;
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  transition: opacity 0.4s ease, transform 0.4s ease, visibility 0.4s;
 }
 
-#toolbar .toolbar-right button svg {
+.gear-btn:hover {
+  background: #f0f0f0;
+  color: #212529;
+  transform: rotate(45deg);
+}
+
+.gear-btn.hidden {
+  opacity: 0;
+  transform: scale(0.3);
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* ===== Bookmarks Panel (left side) ===== */
+.bookmarks-panel {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 260px;
+  z-index: 2500;
+  background: #fafafa;
+  border-right: 1px solid var(--toolbar-border);
+  box-shadow: 2px 0 12px rgba(0, 0, 0, 0.06);
+  display: flex;
+  flex-direction: column;
+  transform: translateX(0);
+  transition: transform 0.3s ease, opacity 0.3s ease;
+  overflow: hidden;
+}
+
+.bookmarks-panel.hidden {
+  transform: translateX(-100%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.bookmarks-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--toolbar-border);
   flex-shrink: 0;
 }
 
-#toolbar .toolbar-right button:hover {
+.bookmarks-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #212529;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.bookmarks-logo {
+  width: 14px;
+  height: 14px;
+}
+
+.bookmarks-close {
+  background: none;
+  border: none;
+  font-size: 20px;
+  line-height: 1;
+  color: #6c757d;
+  cursor: pointer;
+  padding: 0 4px;
+  opacity: 0.6;
+  transition: opacity 0.15s;
+}
+
+.bookmarks-close:hover {
+  opacity: 1;
+}
+
+.bookmarks-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 0;
+}
+
+.bookmarks-list a {
+  display: block;
+  padding: 5px 16px;
+  font-size: 12px;
+  color: #495057;
+  text-decoration: none;
+  line-height: 1.4;
+  border-left: 3px solid transparent;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.bookmarks-list a:hover {
   background: #e9ecef;
-  border-color: #adb5bd;
+  color: #212529;
+  border-left-color: #1a73e8;
 }
 
-#btn-pdf {
-  background: #1a73e8 !important;
-  color: white !important;
-  border-color: #1a73e8 !important;
+.bookmarks-list a.active {
+  background: #e8f0fe;
+  color: #1a73e8;
+  border-left-color: #1a73e8;
+  font-weight: 500;
 }
 
-#btn-pdf:hover {
-  background: #1557b0 !important;
-}
+/* Indentation for heading levels */
+.bookmarks-list a[data-level="1"] { padding-left: 16px; font-weight: 600; font-size: 13px; }
+.bookmarks-list a[data-level="2"] { padding-left: 24px; }
+.bookmarks-list a[data-level="3"] { padding-left: 36px; }
+.bookmarks-list a[data-level="4"] { padding-left: 48px; font-size: 11px; }
+.bookmarks-list a[data-level="5"] { padding-left: 56px; font-size: 11px; }
+.bookmarks-list a[data-level="6"] { padding-left: 64px; font-size: 11px; }
 
-/* Font popover panels */
-.font-popover {
-  display: none;
+/* ===== Appearance Popover ===== */
+.appearance-popover {
   position: fixed;
+  top: 80px;
+  right: 72px;
+  z-index: 3500;
   background: white;
   border: 1px solid var(--toolbar-border);
-  border-radius: 8px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  border-radius: 10px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
   padding: 16px;
-  z-index: 2000;
   min-width: 280px;
+  transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
 }
 
-.font-popover.visible {
-  display: block;
+.appearance-popover.hidden {
+  opacity: 0;
+  transform: translateX(10px);
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.appearance-section {
+  margin-bottom: 14px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #eee;
+}
+
+.appearance-section:last-child {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.appearance-section h4 {
+  font-size: 11px;
+  font-weight: 600;
+  color: #6c757d;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0 0 10px;
 }
 
 .popover-row {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
 .popover-row:last-child {
@@ -243,7 +383,7 @@ body {
   background: #1d2124;
 }
 
-/* PDF Dialog */
+/* ===== PDF Dialog ===== */
 .dialog-overlay {
   position: fixed;
   top: 0;
@@ -412,7 +552,7 @@ body {
   background: #1557b0;
 }
 
-/* Article content area */
+/* ===== Article content area ===== */
 #reader-content {
   max-width: var(--content-width);
   margin: 0 auto;
@@ -456,6 +596,7 @@ body {
   line-height: 1.3;
   margin-top: 1.5em;
   margin-bottom: 0.5em;
+  scroll-margin-top: 60px;
 }
 
 #article-body h1 { font-size: 1.8em; }
@@ -474,9 +615,7 @@ body {
   margin: 1em 0;
 }
 
-/* Inline/decorative images (arrows, icons, emoji-sized images) should stay inline
-   and not blow up to full width. Targets small images inside paragraphs, headings,
-   list items, and links — common on Medium/TDS for arrow icons and decorators. */
+/* Inline/decorative images */
 #article-body p img,
 #article-body li img,
 #article-body a img,
@@ -593,8 +732,7 @@ pre[data-lang="sql"] { border-left-color: #e38c00; }
 pre[data-lang="json"] { border-left-color: #292929; }
 pre[data-lang="yaml"] { border-left-color: #cb171e; }
 
-/* Hover-to-delete: subtle highlight on hovered element.
-   Only show when the body has the deletable-hover-active class (mouse is over article) */
+/* ===== Hover-to-delete ===== */
 #article-body.delete-hover-active [data-deletable][data-hovered] {
   outline: 1px dashed #dc354580;
   outline-offset: 2px;
@@ -641,7 +779,7 @@ pre[data-lang="yaml"] { border-left-color: #cb171e; }
   background: #a71d2a;
 }
 
-/* Page-break rules (applied globally so html2pdf.js respects them) */
+/* Page-break rules */
 #article-body h1, #article-body h2, #article-body h3,
 #article-body h4, #article-body h5, #article-body h6 {
   page-break-after: avoid;
@@ -774,28 +912,27 @@ pre[data-lang="yaml"] { border-left-color: #cb171e; }
   transform: translateX(-50%) translateY(0);
 }
 
-/* ===== Hints toast ===== */
-/* ===== Hints card (single collapsible) ===== */
+/* ===== Hints card (positioned below right toolbar) ===== */
 .reader-hints-card {
   position: fixed;
-  top: 56px;
-  left: 50%;
-  transform: translateX(-50%) translateY(-10px);
+  top: 420px;
+  right: 20px;
   background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 10px;
   padding: 14px 18px;
   box-shadow: 0 4px 16px rgba(0,0,0,0.08);
   font-size: 12px;
-  z-index: 10000;
+  z-index: 3000;
   opacity: 0;
-  transition: opacity 0.3s, transform 0.3s;
-  max-width: 90vw;
+  transform: translateX(10px);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+  max-width: 300px;
 }
 
 .reader-hints-card.visible {
   opacity: 1;
-  transform: translateX(-50%) translateY(0);
+  transform: translateX(0);
 }
 
 .hints-card-header {
@@ -840,7 +977,8 @@ pre[data-lang="yaml"] { border-left-color: #cb171e; }
   padding: 5px 10px;
   border-radius: 5px;
   font-weight: 500;
-  white-space: nowrap;
+  font-size: 11px;
+  white-space: normal;
 }
 
 .hint-item-1 { background: #eff6ff; color: #1d4ed8; border-left: 3px solid #3b82f6; }
@@ -849,32 +987,23 @@ pre[data-lang="yaml"] { border-left-color: #cb171e; }
 .hint-item-4 { background: #ecfdf5; color: #059669; border-left: 3px solid #10b981; }
 .hint-item-5 { background: #fffbeb; color: #d97706; border-left: 3px solid #f59e0b; }
 
-/* Explode/burst animation */
-@keyframes hintExplode {
-  0% { transform: translateX(-50%) scale(1); opacity: 1; filter: blur(0); }
-  20% { transform: translateX(-50%) scale(1.08); opacity: 1; filter: blur(0); }
-  100% { transform: translateX(-50%) scale(1.5); opacity: 0; filter: blur(6px); }
+/* Smooth fade-out dismiss (replaces explode) */
+@keyframes hintDismiss {
+  0% { opacity: 1; transform: translateX(0); }
+  100% { opacity: 0; transform: translateX(20px); }
 }
 
-.reader-hints-card.hint-explode {
-  animation: hintExplode 0.4s ease-out forwards;
+.reader-hints-card.hint-dismiss {
+  animation: hintDismiss 0.4s ease-out forwards;
   pointer-events: none;
 }
 
-/* ===== Cleanup button ===== */
-#btn-cleanup {
-  color: #dc3545 !important;
-  border-color: #dc354540 !important;
-}
-
-#btn-cleanup:hover {
-  background: #dc354510 !important;
-  border-color: #dc3545 !important;
-}
-
-/* Print styles */
+/* ===== Print styles ===== */
 @media print {
-  #toolbar {
+  #banner,
+  .right-toolbar,
+  .gear-btn,
+  .bookmarks-panel {
     display: none !important;
   }
 
@@ -900,7 +1029,8 @@ pre[data-lang="yaml"] { border-left-color: #cb171e; }
   .reader-delete-btn,
   .image-resize-bar,
   .reader-toast,
-  .reader-hints-card {
+  .reader-hints-card,
+  .appearance-popover {
     display: none !important;
   }
 
@@ -943,9 +1073,9 @@ pre[data-lang="yaml"] { border-left-color: #cb171e; }
     background: transparent !important;
   }
 
-  /* Hide PDF dialog and font popovers in print */
+  /* Hide PDF dialog and popovers in print */
   .dialog-overlay,
-  .font-popover {
+  .appearance-popover {
     display: none !important;
   }
 }

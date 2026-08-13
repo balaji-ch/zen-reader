@@ -2,10 +2,6 @@
 (function() {
   'use strict';
 
-  // Avoid running multiple times
-  if (window.__readerPrintExtracted) return;
-  window.__readerPrintExtracted = true;
-
   // Clone the document to avoid modifying the live page
   const docClone = document.cloneNode(true);
 
