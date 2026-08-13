@@ -5,15 +5,16 @@ A Chrome extension that transforms cluttered web articles into a clean, distract
 ## Features
 
 - **Article extraction** — Uses Mozilla Readability to strip ads, navigation, and clutter from any article
-- **Bookmarks panel** — Left-side outline panel built from article headings (H1-H6), with click-to-scroll and active heading tracking
+- **Bookmarks panel** — Left-side outline panel built from article headings (H1-H6), with click-to-scroll, active heading tracking, per-section read-progress indicators, and a Back-to-top button
 - **Dark mode** — Full dark theme (neutral grays, VS Code Dark+ syntax highlighting). Auto-detects system preference.
 - **Reading progress** — Thin gradient bar at the top tracks scroll position
 - **Syntax highlighting** — Code blocks are highlighted with language-specific colored left borders (Python, C++, Rust, JS, etc.)
 - **Math rendering (KaTeX)** — LaTeX math from MathJax/KaTeX pages is recovered and typeset as real equations (inline `$…$` and display `$$…$$`), even on async MathJax pages where the source is normally lost
 - **Native PDF export** — Generates real PDFs via Chrome's printing engine with selectable text, searchable content, preserved links, PDF bookmarks/outline, and optional Table of Contents page
 - **Markdown export** — Save the cleaned article as a `.md` file, preserving headings, code fences (with language), lists, tables, and links
-- **Focus mode** — Dims all but the block you're reading for a spotlight effect (Alt+O)
-- **Custom CSS** — Apply your own styles to the reader from the Appearance popover
+- **Focus mode** — Dims all but the block you're reading for a spotlight effect (Alt+O); remembered across reloads and never dims your PDF/print output
+- **Layout density** — Compact / Comfortable / Spacious presets adjust line spacing and column width in one click (remembered across reloads)
+- **Custom CSS** — Apply your own styles to the reader from the Appearance popover (remembered across reloads)
 - **Reading stats** — Estimated read time + word count; live word count for any text you select
 - **Bundled fonts** — All 13 font families work offline (latin subset, ~500KB total)
 - **Custom fonts** — Adjust body and code font family, size, and weight from the Appearance popover
@@ -48,7 +49,7 @@ A Chrome extension that transforms cluttered web articles into a clean, distract
 
 ### From release ZIP
 
-1. Download `ZenReader v2.0.0.zip` from [Releases](https://github.com/balaji-ch/zen-reader/releases)
+1. Download `ZenReader v2.1.0.zip` from [Releases](https://github.com/balaji-ch/zen-reader/releases)
 2. Extract to a folder
 3. Load unpacked in Chrome as described above
 
@@ -64,7 +65,8 @@ The toolbar buttons are grouped **View** (bookmarks, fonts, dark mode, tips), **
 | Action | How |
 |--------|-----|
 | Toggle bookmarks | 🔖 Bookmark icon or `Alt+B` |
-| Adjust fonts / custom CSS | 🔤 Font icon or `Alt+F` |
+| Adjust fonts / density / custom CSS | 🔤 Font icon or `Alt+F` |
+| Back to top | Bookmarks panel footer button |
 | Dark mode | 🌙 Moon icon or `Alt+D` |
 | View tips | 💡 Lightbulb icon or `Alt+T` |
 | Edit mode | ✏️ Pencil icon or `Alt+E` — enables delete/edit |
@@ -167,6 +169,12 @@ node generate-icons.js
 ```
 
 ## Changelog
+
+### v2.1.0
+- **Layout density presets** — Compact / Comfortable / Spacious (line spacing + column width), remembered across reloads
+- **Bookmarks progress** — sections you've scrolled past get a read indicator; added a Back-to-top button in the panel footer
+- **Focus mode persists** across reloads
+- **Fix:** focus mode no longer dims PDF/print output — exports are always full-color regardless of focus state (custom CSS persistence was already in place)
 
 ### v2.0.0
 Major release — adds math rendering, Markdown export, focus mode, custom CSS,

@@ -36,6 +36,12 @@
     </div>
     <div class="bookmarks-stats" id="bookmarks-stats"></div>
     <nav id="bookmarks-list" class="bookmarks-list"></nav>
+    <div class="bookmarks-footer">
+      <button id="btn-back-to-top" class="bookmarks-backtotop" title="Back to top">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+        Back to top
+      </button>
+    </div>
   </div>
 
   <!-- Floating Right Toolbar -->
@@ -98,6 +104,16 @@
 
   <!-- Appearance popover (replaces separate text/code popovers) -->
   <div class="appearance-popover hidden" id="appearance-popover">
+    <div class="appearance-section">
+      <h4>Layout Density</h4>
+      <div class="popover-row">
+        <div class="weight-group" id="density-group">
+          <button class="weight-option" data-density="compact">Compact</button>
+          <button class="weight-option active" data-density="comfortable">Comfortable</button>
+          <button class="weight-option" data-density="spacious">Spacious</button>
+        </div>
+      </div>
+    </div>
     <div class="appearance-section">
       <h4>Text Font</h4>
       <div class="popover-row">

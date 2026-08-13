@@ -367,6 +367,7 @@
       link.href = '#' + heading.id;
       link.textContent = heading.textContent.trim();
       link.setAttribute('data-level', level);
+      link.setAttribute('data-heading-id', heading.id); // for scroll-spy read state
       link.addEventListener('click', (e) => {
         e.preventDefault();
         heading.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -376,6 +377,9 @@
       });
       bookmarksList.appendChild(link);
     });
+
+    // Initialise read-progress state for the freshly-built list.
+    updateActiveBookmark();
   }
 
   function toggleBookmarks() {
@@ -398,6 +402,14 @@
     chrome.storage.sync.set({ bookmarksPanelOpen: false });
   });
 
+  // Back-to-top (bookmarks panel footer)
+  const btnBackToTop = document.getElementById('btn-back-to-top');
+  if (btnBackToTop) {
+    btnBackToTop.addEventListener('click', () => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  }
+
   // Restore bookmarks panel state from storage
   chrome.storage.sync.get('bookmarksPanelOpen', (result) => {
     // Default is open (true) if never set
@@ -411,21 +423,25 @@
     }
   });
 
-  // Update active bookmark on scroll
+  // Update active bookmark + per-section read progress on scroll.
+  // A section is "read" once its heading has scrolled above the top threshold;
+  // the current section (last heading above the threshold) is "active".
   function updateActiveBookmark() {
     const headings = articleBody.querySelectorAll('h1, h2, h3, h4, h5, h6');
     let current = null;
+    const passed = new Set();
     headings.forEach((heading) => {
       const rect = heading.getBoundingClientRect();
       if (rect.top <= 100) {
         current = heading;
+        passed.add(heading.id);
       }
     });
-    if (current) {
-      bookmarksList.querySelectorAll('a').forEach(a => {
-        a.classList.toggle('active', a.getAttribute('href') === '#' + current.id);
-      });
-    }
+    bookmarksList.querySelectorAll('a').forEach((a) => {
+      const id = a.getAttribute('data-heading-id');
+      a.classList.toggle('read', passed.has(id));
+      a.classList.toggle('active', current ? id === current.id : false);
+    });
   }
 
   // ===== Reading Progress Bar =====
@@ -558,6 +574,13 @@
 
     // Show reading stats
     showReadingStats();
+
+    // Restore focus mode if it was on last time (needs rendered content first).
+    chrome.storage.sync.get('focusMode', (result) => {
+      if (result && result.focusMode) {
+        setFocusMode(true, { persist: false, announce: false });
+      }
+    });
 
     // Show hints toast
     showHintsToast();
@@ -834,8 +857,11 @@
     return Array.from(blocks);
   }
 
-  function toggleFocusMode() {
-    focusModeActive = !focusModeActive;
+  // Apply/clear focus mode. `persist` (default true) writes the state to
+  // storage; `announce` (default true) shows the toast. Restore-on-load passes
+  // both false so it doesn't re-write storage or pop a toast.
+  function setFocusMode(on, { persist = true, announce = true } = {}) {
+    focusModeActive = on;
     btnFocus.classList.toggle('active', focusModeActive);
     document.body.classList.toggle('focus-mode', focusModeActive);
     if (focusModeActive) {
@@ -848,7 +874,12 @@
         el.classList.remove('focus-dim', 'focus-active', 'focus-near');
       });
     }
-    showToast(focusModeActive ? 'Focus mode ON' : 'Focus mode OFF');
+    if (persist) chrome.storage.sync.set({ focusMode: focusModeActive });
+    if (announce) showToast(focusModeActive ? 'Focus mode ON' : 'Focus mode OFF');
+  }
+
+  function toggleFocusMode() {
+    setFocusMode(!focusModeActive);
   }
 
   btnFocus.addEventListener('click', toggleFocusMode);
@@ -1505,6 +1536,34 @@
     applyCodeWeight(btn.dataset.weight);
     updateGoogleFontsLink();
     chrome.storage.sync.set({ codeWeight: btn.dataset.weight });
+  });
+
+  // ===== Layout density presets =====
+  // Sets body[data-density], which drives --line-height / --para-spacing /
+  // --content-width via CSS. Font size stays independently slider-controlled.
+  const densityGroup = document.getElementById('density-group');
+
+  function applyDensity(density) {
+    document.body.setAttribute('data-density', density);
+    if (densityGroup) {
+      densityGroup.querySelectorAll('.weight-option').forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.density === density);
+      });
+    }
+  }
+
+  if (densityGroup) {
+    densityGroup.addEventListener('click', (e) => {
+      const btn = e.target.closest('.weight-option');
+      if (!btn) return;
+      applyDensity(btn.dataset.density);
+      chrome.storage.sync.set({ density: btn.dataset.density });
+    });
+  }
+
+  // Restore saved density (default comfortable).
+  chrome.storage.sync.get('density', (result) => {
+    applyDensity((result && result.density) || 'comfortable');
   });
 
   // ===== Custom CSS =====

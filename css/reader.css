@@ -8,12 +8,36 @@
   --text-font-weight: 400;
   --code-font-weight: 400;
   --content-width: 720px;
+  /* Layout density (defaults = "comfortable"); overridden per body[data-density] */
+  --line-height: 1.7;
+  --para-spacing: 1em;
   --bg-color: #ffffff;
   --text-color: #1a1a1a;
   --border-color: #e8e4d0;
   --code-bg: #fffdf5;
   --toolbar-bg: #f8f9fa;
   --toolbar-border: #dee2e6;
+}
+
+/* ===== Reading density presets =====
+   Compact = tighter lines + narrower column; Spacious = airier + wider.
+   Font size stays independently controlled by the size slider. */
+body[data-density="compact"] {
+  --line-height: 1.45;
+  --para-spacing: 0.7em;
+  --content-width: 640px;
+}
+
+body[data-density="comfortable"] {
+  --line-height: 1.7;
+  --para-spacing: 1em;
+  --content-width: 720px;
+}
+
+body[data-density="spacious"] {
+  --line-height: 1.95;
+  --para-spacing: 1.4em;
+  --content-width: 800px;
 }
 
 * {
@@ -26,7 +50,7 @@ body {
   font-family: var(--body-font);
   font-size: var(--font-size);
   font-weight: var(--text-font-weight);
-  line-height: 1.7;
+  line-height: var(--line-height);
   color: var(--text-color);
   background: var(--bg-color);
 }
@@ -406,11 +430,48 @@ body.dark .selection-count {
   border-left-color: #1a73e8;
 }
 
+/* Read (scrolled-past) sections get a subtle green left accent as a
+   per-section progress indicator. The active section still wins visually. */
+.bookmarks-list a.read {
+  border-left-color: #34a853;
+  color: #6c757d;
+}
+
 .bookmarks-list a.active {
   background: #e8f0fe;
   color: #1a73e8;
   border-left-color: #1a73e8;
   font-weight: 500;
+}
+
+/* ===== Bookmarks footer (Back to top) ===== */
+.bookmarks-footer {
+  flex-shrink: 0;
+  padding: 10px 16px;
+  border-top: 1px solid var(--toolbar-border);
+}
+
+.bookmarks-backtotop {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 7px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #495057;
+  background: transparent;
+  border: 1px solid var(--toolbar-border);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.bookmarks-backtotop:hover {
+  background: #e9ecef;
+  border-color: #adb5bd;
+  color: #212529;
 }
 
 /* Indentation for heading levels */
@@ -893,7 +954,7 @@ body.dark .checkbox-label {
 #article-body h4 { font-size: 1.1em; }
 
 #article-body p {
-  margin: 0 0 1em;
+  margin: 0 0 var(--para-spacing);
 }
 
 #article-body img {
@@ -1396,10 +1457,29 @@ body.dark .bookmarks-list a:hover {
   color: #d4d4d4;
 }
 
+body.dark .bookmarks-list a.read {
+  border-left-color: #34a853;
+  color: #808080;
+}
+
 body.dark .bookmarks-list a.active {
   background: #2a2d2e;
   color: #4fc1ff;
   border-left-color: #4fc1ff;
+}
+
+body.dark .bookmarks-footer {
+  border-top-color: #3c3c3c;
+}
+
+body.dark .bookmarks-backtotop {
+  color: #9d9d9d;
+  border-color: #3c3c3c;
+}
+
+body.dark .bookmarks-backtotop:hover {
+  background: #3c3c3c;
+  color: #d4d4d4;
 }
 
 body.dark #article-header {
@@ -1684,6 +1764,15 @@ body.focus-mode #article-body .focus-dim.focus-active {
   .bookmarks-panel,
   .progress-bar {
     display: none !important;
+  }
+
+  /* Focus mode is a reading aid only — never carry the dimming into PDF/print,
+     otherwise most of the article prints as faded light-gray text. Force every
+     block back to full opacity regardless of focus-dim/near/active state. */
+  body.focus-mode #article-body .focus-dim,
+  body.focus-mode #article-body .focus-dim.focus-near,
+  body.focus-mode #article-body .focus-dim.focus-active {
+    opacity: 1 !important;
   }
 
   #reader-content {
