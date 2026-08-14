@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <style>
     body {
-      width: 240px;
+      width: 280px;
       padding: 16px;
       font-family: 'Segoe UI', system-ui, sans-serif;
       font-size: 13px;
@@ -20,7 +20,7 @@
       color: #555;
       line-height: 1.4;
     }
-    button {
+    .btn-extract {
       width: 100%;
       padding: 10px;
       font-size: 13px;
@@ -32,8 +32,126 @@
       cursor: pointer;
       transition: background 0.15s;
     }
-    button:hover {
+    .btn-extract:hover {
       background: #1557b0;
+    }
+    .btn-extract:disabled {
+      background: #93b8e8;
+      cursor: not-allowed;
+    }
+    .history-section {
+      margin-top: 14px;
+      border-top: 1px solid #eee;
+      padding-top: 10px;
+    }
+    .history-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      font-weight: 600;
+      color: #6c757d;
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .history-chevron {
+      font-size: 8px;
+      transition: transform 0.2s;
+    }
+    .history-chevron.open {
+      transform: rotate(90deg);
+    }
+    .history-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    .history-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 6px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background 0.12s;
+      text-decoration: none;
+      color: inherit;
+    }
+    .history-item:hover {
+      background: #f0f4ff;
+    }
+    .history-item-text {
+      flex: 1;
+      min-width: 0;
+    }
+    .history-item-title {
+      font-size: 12px;
+      font-weight: 500;
+      color: #212529;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .history-item-meta {
+      font-size: 10px;
+      color: #999;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .history-li {
+      display: flex;
+      align-items: center;
+      position: relative;
+    }
+    .history-li .history-item {
+      flex: 1;
+      min-width: 0;
+    }
+    .history-delete {
+      display: none;
+      width: 20px;
+      height: 20px;
+      border: none;
+      background: transparent;
+      color: #aaa;
+      font-size: 14px;
+      cursor: pointer;
+      border-radius: 3px;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .history-li:hover .history-delete {
+      display: flex;
+    }
+    .history-delete:hover {
+      color: #d93025;
+      background: #fde8e8;
+    }
+    .history-clear {
+      text-align: center;
+      padding: 6px 0 2px;
+    }
+    .history-clear a {
+      font-size: 10px;
+      color: #adb5bd;
+      text-decoration: none;
+    }
+    .history-clear a:hover {
+      color: #d93025;
+      text-decoration: underline;
+    }
+    .history-empty {
+      font-size: 11px;
+      color: #aaa;
+      text-align: center;
+      padding: 8px 0;
     }
     .footer {
       margin-top: 12px;
@@ -41,13 +159,38 @@
       color: #999;
       text-align: center;
     }
+    .shortcut-hint {
+      font-size: 10px;
+      color: #adb5bd;
+      text-align: center;
+      margin-top: 6px;
+    }
+    .shortcut-hint kbd {
+      background: #f0f0f0;
+      border: 1px solid #ddd;
+      border-radius: 3px;
+      padding: 1px 4px;
+      font-family: inherit;
+      font-size: 10px;
+    }
   </style>
 </head>
 <body>
   <h2>ZenReader</h2>
-  <p>Extract and clean the current page for reading, printing, or PDF export.</p>
-  <button id="btn-extract">Extract Article</button>
-  <div class="footer">Hover elements in reader to remove them</div>
+  <p>Extract and clean the current page for distraction-free reading.</p>
+  <button id="btn-extract" class="btn-extract">Extract Article</button>
+  <div class="shortcut-hint">or press <kbd>Ctrl+Shift+Z</kbd></div>
+
+  <div class="history-section">
+    <div class="history-header" id="history-toggle">
+      <span>Recent</span>
+      <span class="history-chevron" id="history-chevron">&#9654;</span>
+    </div>
+    <ul id="history-list" class="history-list" style="display:none;">
+      <li class="history-empty">No recent articles</li>
+    </ul>
+  </div>
+
   <script src="popup.js"></script>
 </body>
 </html>

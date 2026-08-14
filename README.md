@@ -5,9 +5,9 @@ A Chrome extension that transforms cluttered web articles into a clean, distract
 ## Features
 
 - **Article extraction** — Uses Mozilla Readability to strip ads, navigation, and clutter from any article
-- **Bookmarks panel** — Left-side outline panel built from article headings (H1-H6), with click-to-scroll, active heading tracking, per-section read-progress indicators, and a Back-to-top button
+- **Bookmarks panel** — Floating draggable outline built from headings (H1-H6), bookmark icons, active section highlight, scroll-to-top chevron
 - **Dark mode** — Full dark theme (neutral grays, VS Code Dark+ syntax highlighting). Auto-detects system preference.
-- **Reading progress** — Thin gradient bar at the top tracks scroll position
+- **Reading progress** — Thin gradient bar at the top; hover anywhere on it to see percentage
 - **Syntax highlighting** — Code blocks are highlighted with language-specific colored left borders (Python, C++, Rust, JS, etc.)
 - **Math rendering (KaTeX)** — LaTeX math from MathJax/KaTeX pages is recovered and typeset as real equations (inline `$…$` and display `$$…$$`), even on async MathJax pages where the source is normally lost
 - **Native PDF export** — Generates real PDFs via Chrome's printing engine with selectable text, searchable content, preserved links, PDF bookmarks/outline, and optional Table of Contents page
@@ -19,12 +19,13 @@ A Chrome extension that transforms cluttered web articles into a clean, distract
 - **Bundled fonts** — All 13 font families work offline (latin subset, ~500KB total)
 - **Custom fonts** — Adjust body and code font family, size, and weight from the Appearance popover
 - **Movable, groupable toolbar** — Drag the toolbar anywhere by its grip handle (position remembered); minimize it into a gear button; buttons grouped View / Edit / Export
-- **Movable tips card** — Drag the Tips card by its header to reposition it (position remembered)
+- **Edit tips** — Contextual hints shown when edit mode is first activated (Alt+T to toggle manually)
+- **Incognito support** — Works in private mode; history and reading positions are not saved
 - **Edit mode** — Toggle pencil icon (or Alt+E) to enable hover-to-delete and double-click-to-edit. Alt+hover also works as a shortcut.
 - **Grouped deletion** — Shift+click the delete button to remove all similar elements at once
 - **Undo support** — Ctrl+Z to undo deletions, text edits, and image resizes (up to 50 actions)
 - **Image resize** — Click any image to select it, then resize to 25%, 50%, 75%, or 100% width. Ctrl+click to select multiple images
-- **Keyboard shortcuts** — Alt+B (bookmarks), Alt+F (fonts), Alt+D (dark mode), Alt+T (tips), Alt+E (edit mode), Alt+O (focus mode), Alt+P (print), Alt+S (save PDF), Alt+M (markdown), Esc (close panels)
+- **Keyboard shortcuts** — Alt+? shows full cheatsheet. Alt+ B/D/F/E/O/T/P/S/M for all actions, Esc to close panels
 - **Smart page breaks** — Headings stay with their content; code blocks and images don't split across pages
 - **Ligature-free code** — Code blocks disable font ligatures to correctly display tokens like `<|end_of_text|>`
 - **Auto-collapsing UI** — Right toolbar and banner fade/collapse after 10s of inactivity, maximizing reading space
@@ -56,70 +57,18 @@ A Chrome extension that transforms cluttered web articles into a clean, distract
 ## Usage
 
 1. Navigate to any article
-2. Click the ZenReader toolbar icon
+2. Click the ZenReader icon (or press `Ctrl+Shift+Z`)
 3. The article opens in a clean reader view
-4. Use the floating right toolbar:
+4. Press `Alt+?` for the full keyboard shortcuts cheatsheet
 
-The toolbar buttons are grouped **View** (bookmarks, fonts, dark mode, tips), **Edit** (edit mode, focus mode), and **Export** (print, PDF, markdown).
-
-| Action | How |
-|--------|-----|
-| Toggle bookmarks | 🔖 Bookmark icon or `Alt+B` |
-| Adjust fonts / density / custom CSS | 🔤 Font icon or `Alt+F` |
-| Back to top | Bookmarks panel footer button |
-| Dark mode | 🌙 Moon icon or `Alt+D` |
-| View tips | 💡 Lightbulb icon or `Alt+T` |
-| Edit mode | ✏️ Pencil icon or `Alt+E` — enables delete/edit |
-| Focus mode | 👁️ Eye icon or `Alt+O` — dims surrounding content |
-| Print | 🖨️ Printer icon or `Alt+P` |
-| Export PDF | 📄 PDF icon or `Alt+S` → configure margins/page size/TOC → generate |
-| Export Markdown | ⬇️ Markdown icon or `Alt+M` → downloads a `.md` file |
-| Move toolbar | Drag the ⣿ grip handle at the top (position remembered) |
-| Minimize toolbar | Click the − button in the handle row → collapses into the gear |
-| Move tips card | Drag the Tips card by its header (position remembered) |
-| Delete element | Edit mode ON → hover + click ❌ (or Alt+hover) |
-| Delete all similar | Shift+click the ❌ red X |
-| Edit text | Edit mode ON → double-click paragraph (or Alt+dblclick) |
-| Resize images | Click image to select, use resize bar (Ctrl+click for multi) |
-| Undo | ⌨️ Ctrl+Z |
-| Close panels | `Esc` |
-
-Tips appear automatically on load (auto-dismiss after 7 seconds). Opening them
-via the 💡 button keeps them until you close them.
+The toolbar groups buttons into **View** / **Edit** / **Export**. It auto-collapses after 10s; drag the grip to reposition, click minus to minimize.
 
 ## PDF vs Print
 
-ZenReader offers two ways to produce output. They serve different purposes:
+- **PDF** (`Alt+S`) — Generates a bookmarked, tagged, accessible `.pdf` with configurable margins and page size. Headings become PDF outline entries. Includes all edits/resizes.
+- **Print** (`Alt+P`) — Opens the native browser print dialog. Use for quick printouts or if you prefer the system flow.
 
-| | **PDF** (document icon) | **Print** (printer icon) |
-|--|-------------------------|--------------------------|
-| **What it does** | Generates a downloadable `.pdf` file via Chrome's DevTools Protocol | Opens the browser's native print dialog |
-| **Bookmarks/Outline** | Yes — heading structure (H1-H6) embedded as PDF bookmarks | No |
-| **Tagged/Accessible** | Yes — produces a tagged PDF for screen readers | Depends on printer/driver |
-| **Margins** | Configurable in-app (None / Minimal / Custom) | Configured in the print dialog |
-| **Page size** | Selectable (A4, Letter, Legal) | Configured in the print dialog |
-| **Output** | Always a PDF file saved to disk | Paper, or "Save as PDF" via the print dialog |
-| **Use when** | You want a polished, bookmarked, accessible PDF document | You want a quick printout or prefer the native print flow |
-
-> **Note:** During PDF generation, Chrome briefly shows a "debugging started" notification bar. This is expected — the extension temporarily attaches the Chrome Debugger to access the native PDF renderer.
-
-## PDF Export Details
-
-When you click the PDF icon, a dialog appears with:
-
-| Setting | Description |
-|---------|-------------|
-| Margins | **No Margin** (0mm), **Minimal** (5mm all sides), or **Custom** (per-side control, 0-50mm) |
-| Page size | A4, Letter, or Legal |
-
-The generated PDF includes:
-
-- Selectable and searchable text
-- Preserved hyperlinks and images
-- PDF bookmarks/outline built from article headings (H1-H6)
-- Tagged PDF for accessibility
-- Smart page breaks — headings kept with content, images don't split
-- All edits, deletions, and image resizes reflected in the output
+> Chrome briefly shows "debugging started" during PDF generation — this is expected (the extension uses the DevTools Protocol to access the native renderer).
 
 ## Permissions
 

@@ -1,6 +1,38 @@
 // Background service worker
 // Handles messaging between content script and reader page
 
+// ===== Keyboard shortcut command =====
+// Allows extraction via Ctrl+Shift+Z without opening the popup.
+chrome.commands.onCommand.addListener(async (command) => {
+  if (command !== 'extract-article') return;
+
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (!tab || !tab.id) return;
+
+  try {
+    // Step 1: inject math-grabber in MAIN world (best-effort)
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        world: 'MAIN',
+        files: ['math-grabber.js']
+      });
+    } catch (_) {
+      // MAIN-world injection can fail on restricted pages; proceed anyway.
+    }
+
+    // Step 2: inject Readability + content.js in ISOLATED world
+    await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      files: ['lib/Readability.js', 'content.js']
+    });
+  } catch (err) {
+    console.warn('ZenReader: extraction via shortcut failed:', err);
+  }
+});
+
+
+
 // Listen for extracted article data from content script
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'ARTICLE_EXTRACTED') {
@@ -8,7 +40,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     chrome.storage.local.set({ articleData: message.data }, () => {
       chrome.tabs.create({ url: chrome.runtime.getURL('reader.html') });
     });
+
+    // Save to article history — skip in incognito to honor private browsing
+    if (!chrome.extension.inIncognitoContext) {
+      saveToHistory(message.data);
+    }
+    return false; // no async response needed
   }
+
+
 
   if (message.type === 'FETCH_IMAGE') {
     // Fetch a remote image from the background worker. Because the service
@@ -18,7 +58,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     fetchImageAsDataUrl(message.url)
       .then((dataUrl) => sendResponse({ success: true, dataUrl }))
       .catch((err) => sendResponse({ success: false, error: err.message }));
-    return true; // async response
+    return true; // async response — keep channel open
   }
 
   if (message.type === 'GENERATE_PDF') {
@@ -27,10 +67,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     handlePdfGeneration(tabId, message.options)
       .then((result) => sendResponse(result))
       .catch((err) => sendResponse({ success: false, error: err.message }));
-    return true; // keep message channel open for async response
+    return true; // async response — keep channel open
   }
 
-  return true;
+  // Unknown message type — don't hold the channel open
+  return false;
 });
 
 /**
@@ -53,6 +94,37 @@ async function fetchImageAsDataUrl(url) {
   const b64 = btoa(binary);
   const type = blob.type || 'image/png';
   return `data:${type};base64,${b64}`;
+}
+
+// ===== Article History =====
+const MAX_HISTORY = 30;
+
+function saveToHistory(articleData) {
+  chrome.storage.local.get('articleHistory', (result) => {
+    const history = result.articleHistory || [];
+
+    // Remove any existing entry for this URL (de-duplicate)
+    const url = articleData.url;
+    const filtered = url
+      ? history.filter(entry => entry.url !== url)
+      : history;
+
+    // Add new entry at the end (newest last)
+    filtered.push({
+      title: articleData.title || 'Untitled',
+      url: articleData.url || '',
+      byline: articleData.byline || '',
+      timestamp: Date.now(),
+      data: articleData
+    });
+
+    // Cap at MAX_HISTORY (remove oldest from front)
+    while (filtered.length > MAX_HISTORY) {
+      filtered.shift();
+    }
+
+    chrome.storage.local.set({ articleHistory: filtered });
+  });
 }
 
 // Page size dimensions in inches

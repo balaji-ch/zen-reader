@@ -17,7 +17,9 @@
 </head>
 <body>
   <!-- Reading Progress Bar -->
-  <div id="progress-bar" class="progress-bar"></div>
+  <div id="progress-track" class="progress-track" data-progress="0">
+    <div id="progress-bar" class="progress-bar"></div>
+  </div>
 
   <!-- Top Banner -->
   <div id="banner">
@@ -28,35 +30,40 @@
     <p class="banner-tagline">Zero distraction reading. Clutter free PDFs.</p>
   </div>
 
-  <!-- Bookmarks Panel (left side, open by default) -->
+  <!-- Bookmarks Panel (floating, collapsible) -->
   <div id="bookmarks-panel" class="bookmarks-panel">
     <div class="bookmarks-header">
-      <span class="bookmarks-title"><img src="icons/icon16.png" alt="" class="bookmarks-logo"> Bookmarks</span>
-      <button class="bookmarks-close" aria-label="Close bookmarks">&times;</button>
-    </div>
-    <div class="bookmarks-stats" id="bookmarks-stats"></div>
-    <nav id="bookmarks-list" class="bookmarks-list"></nav>
-    <div class="bookmarks-footer">
-      <button id="btn-back-to-top" class="bookmarks-backtotop" title="Back to top">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
-        Back to top
+      <div id="bookmarks-drag" class="bookmarks-drag" title="Drag to move">
+        <svg width="14" height="8" viewBox="0 0 18 10" fill="currentColor" aria-hidden="true"><circle cx="4" cy="3" r="1.2"/><circle cx="9" cy="3" r="1.2"/><circle cx="14" cy="3" r="1.2"/><circle cx="4" cy="7" r="1.2"/><circle cx="9" cy="7" r="1.2"/><circle cx="14" cy="7" r="1.2"/></svg>
+      </div>
+      <span class="bookmarks-title">Bookmarks</span>
+      <button id="btn-scroll-top" class="bookmarks-top-btn" title="Scroll to top" aria-label="Scroll to top">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+      </button>
+      <button class="bookmarks-close" aria-label="Collapse bookmarks">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
       </button>
     </div>
+    <nav id="bookmarks-list" class="bookmarks-list"></nav>
   </div>
+
+  <!-- Collapsed bookmarks icon (shown when panel is collapsed) -->
+  <button id="bookmarks-collapsed-btn" class="bookmarks-collapsed-btn hidden" title="Show bookmarks (Alt+B)">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+  </button>
 
   <!-- Floating Right Toolbar -->
   <!-- Buttons are grouped View / Edit / Export with .rtb-divider separators.
        No script indexes these children positionally, so the dividers are safe. -->
   <div id="right-toolbar" class="right-toolbar">
-    <!-- Handle row: grip (drag to move, position remembered) + minimize button
-         that collapses the toolbar into the gear button. -->
+    <!-- Handle row: minimize/toggle (left) + grip drag (right) -->
     <div class="rtb-handle-row">
+      <button id="rtb-minimize" class="rtb-minimize" title="Toggle toolbar" aria-label="Toggle toolbar">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
       <div id="rtb-handle" class="rtb-handle" title="Drag to move">
         <svg width="18" height="10" viewBox="0 0 18 10" fill="currentColor" aria-hidden="true"><circle cx="4" cy="3" r="1.2"/><circle cx="9" cy="3" r="1.2"/><circle cx="14" cy="3" r="1.2"/><circle cx="4" cy="7" r="1.2"/><circle cx="9" cy="7" r="1.2"/><circle cx="14" cy="7" r="1.2"/></svg>
       </div>
-      <button id="rtb-minimize" class="rtb-minimize" title="Minimize to gear" aria-label="Minimize toolbar">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      </button>
     </div>
 
     <!-- View group -->
@@ -111,6 +118,7 @@
           <button class="weight-option" data-density="compact">Compact</button>
           <button class="weight-option active" data-density="comfortable">Comfortable</button>
           <button class="weight-option" data-density="spacious">Spacious</button>
+          <button class="weight-option" data-density="two-column">Two Column</button>
         </div>
       </div>
     </div>
@@ -238,6 +246,7 @@
         <h1 id="article-title"></h1>
         <p id="article-byline"></p>
         <p id="article-source"></p>
+        <div id="article-stats" class="article-stats"></div>
       </header>
       <div id="article-body"></div>
     </article>
@@ -247,6 +256,6 @@
   <script src="lib/highlight.min.js"></script>
   <script src="lib/katex/katex.min.js"></script>
   <script src="lib/katex/auto-render.min.js"></script>
-  <script src="reader.js"></script>
+  <script type="module" src="reader/main.js"></script>
 </body>
 </html>

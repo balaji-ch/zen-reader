@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "ZenReader",
-  "version": "2.1.0",
+  "version": "3.0.0",
   "description": "Distraction-free article reader with syntax highlighting, PDF bookmarks, and custom fonts",
   "permissions": ["activeTab", "storage", "scripting", "debugger", "downloads"],
   "host_permissions": ["<all_urls>"],
@@ -21,8 +21,16 @@
   "background": {
     "service_worker": "background.js"
   },
+  "commands": {
+    "extract-article": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+Z"
+      },
+      "description": "Extract article into ZenReader"
+    }
+  },
   "web_accessible_resources": [{
-    "resources": ["reader.html", "reader.js", "css/*", "lib/*", "fonts/*"],
+    "resources": ["reader.html", "reader.js", "reader/*", "css/*", "lib/*", "fonts/*"],
     "matches": ["<all_urls>"]
   }],
   "content_security_policy": {

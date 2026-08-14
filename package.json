@@ -1,6 +1,6 @@
 {
   "name": "chrome-reader-extension",
-  "version": "2.1.0",
+  "version": "3.0.0",
   "description": "",
   "main": "index.js",
   "directories": {
@@ -8,7 +8,7 @@
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "pack": "powershell -Command \"Compress-Archive -Path manifest.json,background.js,content.js,math-grabber.js,popup.html,popup.js,reader.html,reader.js,css,lib,icons,fonts -DestinationPath 'ZenReader v2.1.0.zip' -Force\""
+    "pack": "powershell -Command \"Compress-Archive -Path manifest.json,background.js,content.js,math-grabber.js,popup.html,popup.js,reader.html,reader.js,reader,css,lib,icons,fonts -DestinationPath 'ZenReader v3.0.0.zip' -Force\""
   },
   "keywords": [],
   "author": "",
@@ -16,8 +16,7 @@
   "type": "commonjs",
   "dependencies": {
     "@mozilla/readability": "^0.6.0",
-    "highlight.js": "^11.11.1",
-    "html2pdf.js": "^0.14.0"
+    "highlight.js": "^11.11.1"
   },
   "devDependencies": {
     "sharp": "^0.35.3"

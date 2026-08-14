@@ -500,7 +500,7 @@
   function resolveUrl(url, base) {
     if (!url || url.startsWith('data:') || url.startsWith('blob:')) return url;
     try {
-      return new URL(url, base.origin).href;
+      return new URL(url, base.href).href;
     } catch (e) {
       return url;
     }

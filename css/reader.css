@@ -40,6 +40,35 @@ body[data-density="spacious"] {
   --content-width: 800px;
 }
 
+body[data-density="two-column"] {
+  --line-height: 1.6;
+  --para-spacing: 0.8em;
+  --content-width: 1100px;
+}
+
+body[data-density="two-column"] #article-body {
+  column-count: 2;
+  column-gap: 40px;
+  column-rule: 1px solid var(--border-color);
+}
+
+body[data-density="two-column"] #article-body pre,
+body[data-density="two-column"] #article-body img,
+body[data-density="two-column"] #article-body figure,
+body[data-density="two-column"] #article-body table,
+body[data-density="two-column"] #article-body blockquote {
+  break-inside: avoid;
+}
+
+@media (max-width: 900px) {
+  body[data-density="two-column"] #article-body {
+    column-count: 1;
+  }
+  body[data-density="two-column"] {
+    --content-width: 720px;
+  }
+}
+
 * {
   box-sizing: border-box;
 }
@@ -56,19 +85,64 @@ body {
 }
 
 /* ===== Reading Progress Bar ===== */
-.progress-bar {
+/* The track spans full width (invisible), the fill (.progress-bar) shows progress */
+.progress-track {
   position: fixed;
   top: 0;
   left: 0;
+  width: 100%;
   height: 3px;
+  z-index: 9999;
+  cursor: default;
+}
+
+/* Expand hover hit area on the track */
+.progress-track::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 14px;
+}
+
+/* Percentage tooltip — shown on track hover */
+.progress-track::after {
+  content: attr(data-progress) '%';
+  position: absolute;
+  top: 8px;
+  left: var(--progress-tooltip-left, 50%);
+  transform: translateX(-50%);
+  padding: 3px 8px;
+  background: #343a40;
+  color: white;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+
+.progress-track:hover::after {
+  opacity: 1;
+}
+
+.progress-bar {
+  height: 100%;
   width: 0%;
   background: linear-gradient(90deg, #1a73e8, #6ab0f3);
-  z-index: 9999;
   transition: width 0.1s linear;
 }
 
 body.dark .progress-bar {
   background: linear-gradient(90deg, #6ab0f3, #a0d4ff);
+}
+
+body.dark .progress-track::after {
+  background: #d4d4d4;
+  color: #1e1e1e;
 }
 
 /* ===== Top Banner ===== */
@@ -299,87 +373,147 @@ body.dark .rtb-handle:hover {
   pointer-events: none;
 }
 
-/* ===== Bookmarks Panel (left side) ===== */
+/* ===== Bookmarks Panel (floating, collapsible) ===== */
 .bookmarks-panel {
   position: fixed;
-  top: 0;
-  left: 0;
-  bottom: 0;
-  width: 260px;
+  top: 80px;
+  left: 20px;
+  width: 240px;
+  max-height: calc(100vh - 120px);
   z-index: 2500;
   background: #fafafa;
-  border-right: 1px solid var(--toolbar-border);
-  box-shadow: 2px 0 12px rgba(0, 0, 0, 0.06);
+  border: 1px solid var(--toolbar-border);
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
   display: flex;
   flex-direction: column;
-  transform: translateX(0);
-  transition: transform 0.3s ease, opacity 0.3s ease;
+  transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s;
   overflow: hidden;
 }
 
 .bookmarks-panel.hidden {
-  transform: translateX(-100%);
   opacity: 0;
+  transform: scale(0.9);
+  visibility: hidden;
   pointer-events: none;
+}
+
+.bookmarks-panel.dragging {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+  transition: none;
 }
 
 .bookmarks-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 14px 16px;
+  gap: 8px;
+  padding: 10px 12px;
   border-bottom: 1px solid var(--toolbar-border);
   flex-shrink: 0;
 }
 
-.bookmarks-title {
-  font-size: 13px;
-  font-weight: 600;
-  color: #212529;
+.bookmarks-drag {
   display: flex;
   align-items: center;
-  gap: 6px;
+  justify-content: center;
+  color: #adb5bd;
+  cursor: grab;
+  padding: 2px;
+  border-radius: 4px;
+  transition: color 0.15s, background 0.15s;
+  touch-action: none;
 }
 
-.bookmarks-logo {
-  width: 14px;
-  height: 14px;
+.bookmarks-drag:hover {
+  color: #6c757d;
+  background: #e9ecef;
+}
+
+.bookmarks-panel.dragging .bookmarks-drag {
+  cursor: grabbing;
+}
+
+.bookmarks-title {
+  flex: 1;
+  font-size: 12px;
+  font-weight: 600;
+  color: #212529;
+}
+
+.bookmarks-top-btn {
+  width: 22px;
+  height: 22px;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #adb5bd;
+  margin-left: auto;
+  transition: background 0.15s, color 0.15s;
+}
+
+.bookmarks-top-btn:hover {
+  background: #e9ecef;
+  color: #1a73e8;
 }
 
 .bookmarks-close {
-  background: none;
+  width: 24px;
+  height: 24px;
   border: none;
-  font-size: 20px;
-  line-height: 1;
-  color: #6c757d;
+  background: transparent;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
-  padding: 0 4px;
-  opacity: 0.6;
-  transition: opacity 0.15s;
+  color: #6c757d;
+  transition: background 0.15s, color 0.15s;
+}
+
+.bookmarks-close:hover {
+  background: #e9ecef;
+  color: #212529;
 }
 
 .bookmarks-close:hover {
   opacity: 1;
+  background: #e9ecef;
 }
 
-.bookmarks-stats {
-  padding: 8px 16px;
-  font-size: 11px;
-  color: #6c757d;
-  border-bottom: 1px solid var(--toolbar-border);
-  display: flex;
-  gap: 12px;
-}
-
-.bookmarks-stats span {
+/* Collapsed bookmarks floating icon */
+.bookmarks-collapsed-btn {
+  position: fixed;
+  top: 80px;
+  left: 20px;
+  z-index: 2500;
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
-  gap: 4px;
+  justify-content: center;
+  background: white;
+  border: 1px solid var(--toolbar-border);
+  border-radius: 50%;
+  color: #495057;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: opacity 0.3s, transform 0.3s, visibility 0.3s;
 }
 
-body.dark .bookmarks-stats {
-  color: #808080;
-  border-bottom-color: #3c3c3c;
+.bookmarks-collapsed-btn:hover {
+  background: #f0f0f0;
+  color: #212529;
+}
+
+.bookmarks-collapsed-btn.hidden {
+  opacity: 0;
+  transform: scale(0.3);
+  visibility: hidden;
+  pointer-events: none;
 }
 
 /* Selection word count tooltip */
@@ -411,76 +545,71 @@ body.dark .selection-count {
   flex: 1;
   overflow-y: auto;
   padding: 12px 0;
+  scrollbar-width: thin;
+  scrollbar-color: #ccc transparent;
+}
+
+.bookmarks-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.bookmarks-list::-webkit-scrollbar-thumb {
+  background: #ccc;
+  border-radius: 2px;
+}
+
+.bookmarks-list::-webkit-scrollbar-track {
+  background: transparent;
 }
 
 .bookmarks-list a {
-  display: block;
-  padding: 5px 16px;
-  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  font-size: 11.5px;
   color: #495057;
   text-decoration: none;
   line-height: 1.4;
-  border-left: 3px solid transparent;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  border-radius: 4px;
+  margin: 1px 6px;
+  transition: background 0.15s, color 0.15s;
+}
+
+.bookmarks-list a .bookmark-icon {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  color: #adb5bd;
+  transition: color 0.2s;
 }
 
 .bookmarks-list a:hover {
   background: #e9ecef;
   color: #212529;
-  border-left-color: #1a73e8;
 }
 
-/* Read (scrolled-past) sections get a subtle green left accent as a
-   per-section progress indicator. The active section still wins visually. */
-.bookmarks-list a.read {
-  border-left-color: #34a853;
+.bookmarks-list a:hover .bookmark-icon {
   color: #6c757d;
 }
 
 .bookmarks-list a.active {
   background: #e8f0fe;
   color: #1a73e8;
-  border-left-color: #1a73e8;
   font-weight: 500;
 }
 
-/* ===== Bookmarks footer (Back to top) ===== */
-.bookmarks-footer {
-  flex-shrink: 0;
-  padding: 10px 16px;
-  border-top: 1px solid var(--toolbar-border);
-}
-
-.bookmarks-backtotop {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  width: 100%;
-  padding: 7px 10px;
-  font-size: 12px;
-  font-weight: 500;
-  color: #495057;
-  background: transparent;
-  border: 1px solid var(--toolbar-border);
-  border-radius: 6px;
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
-}
-
-.bookmarks-backtotop:hover {
-  background: #e9ecef;
-  border-color: #adb5bd;
-  color: #212529;
+.bookmarks-list a.active .bookmark-icon {
+  color: #34a853;
 }
 
 /* Indentation for heading levels */
-.bookmarks-list a[data-level="1"] { padding-left: 16px; font-weight: 600; font-size: 13px; }
-.bookmarks-list a[data-level="2"] { padding-left: 24px; }
-.bookmarks-list a[data-level="3"] { padding-left: 36px; }
-.bookmarks-list a[data-level="4"] { padding-left: 48px; font-size: 11px; }
-.bookmarks-list a[data-level="5"] { padding-left: 56px; font-size: 11px; }
-.bookmarks-list a[data-level="6"] { padding-left: 64px; font-size: 11px; }
+.bookmarks-list a[data-level="1"] { padding-left: 12px; font-weight: 600; font-size: 12px; }
+.bookmarks-list a[data-level="2"] { padding-left: 20px; }
+.bookmarks-list a[data-level="3"] { padding-left: 30px; }
+.bookmarks-list a[data-level="4"] { padding-left: 40px; font-size: 10.5px; }
+.bookmarks-list a[data-level="5"] { padding-left: 48px; font-size: 10.5px; }
+.bookmarks-list a[data-level="6"] { padding-left: 54px; font-size: 10.5px; }
 
 /* ===== Appearance Popover ===== */
 .appearance-popover {
@@ -938,6 +1067,19 @@ body.dark .checkbox-label {
   text-decoration: none;
 }
 
+.article-stats {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 0.8em;
+  color: #6c757d;
+}
+
+body.dark .article-stats {
+  color: #808080;
+}
+
 /* Article body typography */
 #article-body h1, #article-body h2, #article-body h3,
 #article-body h4, #article-body h5, #article-body h6 {
@@ -1261,116 +1403,74 @@ pre[data-lang="yaml"] { border-left-color: #cb171e; }
   transform: translateX(-50%) translateY(0);
 }
 
-/* ===== Hints card (positioned below right toolbar) ===== */
-/* top/right are set in JS from the toolbar's measured geometry so the card
-   always sits just under the toolbar regardless of its height. The values
-   below are only a fallback if JS positioning hasn't run yet. */
-.reader-hints-card {
+/* ===== Tips (lightbulb + hover reveal, centered) ===== */
+.zen-tips {
   position: fixed;
-  top: 420px;
-  right: 20px;
-  /* Single amber card (was 5 separately-colored items) */
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.95);
+  z-index: 4000;
   background: #fffbeb;
   border: 1px solid #f59e0b;
   border-left: 4px solid #f59e0b;
   border-radius: 10px;
   padding: 14px 18px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
-  font-size: 12px;
-  color: #d97706;
-  z-index: 3000;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+  max-width: 280px;
   opacity: 0;
-  transform: translateX(10px);
   transition: opacity 0.4s ease, transform 0.4s ease;
-  max-width: 300px;
 }
 
-.reader-hints-card.visible {
+.zen-tips.visible {
   opacity: 1;
-  transform: translateX(0);
+  transform: translate(-50%, -50%) scale(1);
 }
 
-/* Safety for very short viewports: never exceed the screen; scroll if needed
-   so all hint items remain reachable. */
-.reader-hints-card {
-  max-height: calc(100vh - 16px);
-  overflow-y: auto;
-}
-
-.reader-hints-card.dragging {
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
-  transition: none; /* follow the pointer without lag */
-}
-
-.hints-card-header {
+.zen-tips-first {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 8px;
-  cursor: grab;
-  touch-action: none; /* JS owns the drag gesture */
-  user-select: none;
+  gap: 8px;
 }
 
-.reader-hints-card.dragging .hints-card-header {
-  cursor: grabbing;
+.zen-tips-bulb {
+  font-size: 16px;
+  flex-shrink: 0;
 }
 
-.hints-card-title {
-  font-weight: 700;
-  font-size: 13px;
-  color: #b45309; /* darker amber for the title */
-}
-
-.hints-card-header .hint-close {
-  background: none;
-  border: none;
-  font-size: 18px;
-  cursor: pointer;
-  opacity: 0.5;
-  padding: 0 4px;
-  line-height: 1;
-  color: #b45309;
-  transition: opacity 0.15s;
-}
-
-.hints-card-header .hint-close:hover {
-  opacity: 1;
-}
-
-.hints-card-list {
-  list-style: disc;
-  margin: 0;
-  padding: 0 0 0 18px;
-}
-
-.hints-card-list .hint-item {
-  margin: 0 0 5px;
-  padding: 0;
-  font-weight: 500;
+.zen-tips-text {
   font-size: 11.5px;
-  line-height: 1.45;
-  color: #92400e; /* amber-800 body text */
-  white-space: normal;
+  font-weight: 500;
+  color: #92400e;
+  line-height: 1.4;
 }
 
-.hints-card-list .hint-item::marker {
-  color: #f59e0b;
+/* Tips list — all bullets visible, "more" expands rest */
+
+/* Dismiss animation */
+@keyframes zenTipsDismiss {
+  0% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
 }
 
-.hints-card-list .hint-item:last-child {
-  margin-bottom: 0;
-}
-
-/* Smooth fade-out dismiss (replaces explode) */
-@keyframes hintDismiss {
-  0% { opacity: 1; transform: translateX(0); }
-  100% { opacity: 0; transform: translateX(20px); }
-}
-
-.reader-hints-card.hint-dismiss {
-  animation: hintDismiss 0.4s ease-out forwards;
+.zen-tips-dismiss {
+  animation: zenTipsDismiss 0.3s ease-out forwards;
   pointer-events: none;
+}
+
+/* Dark mode */
+body.dark .zen-tips {
+  background: #2a2213;
+  border-color: #a86e12;
+  border-left-color: #f59e0b;
+}
+
+body.dark .zen-tips-text,
+body.dark .zen-tips-item {
+  color: #fcd34d;
+}
+
+body.dark .zen-tips-more {
+  color: #fbbf24;
 }
 
 /* ===== Dark Mode ===== */
@@ -1433,7 +1533,7 @@ body.dark .gear-btn:hover {
 
 body.dark .bookmarks-panel {
   background: #252526;
-  border-right-color: var(--toolbar-border);
+  border-color: var(--toolbar-border);
 }
 
 body.dark .bookmarks-header {
@@ -1448,8 +1548,32 @@ body.dark .bookmarks-close {
   color: #808080;
 }
 
+body.dark .bookmarks-drag {
+  color: #6e6e6e;
+}
+
+body.dark .bookmarks-drag:hover {
+  color: #9d9d9d;
+  background: #3c3c3c;
+}
+
+body.dark .bookmarks-collapsed-btn {
+  background: #252526;
+  border-color: var(--toolbar-border);
+  color: #9d9d9d;
+}
+
+body.dark .bookmarks-collapsed-btn:hover {
+  background: #3c3c3c;
+  color: #d4d4d4;
+}
+
 body.dark .bookmarks-list a {
   color: #9d9d9d;
+}
+
+body.dark .bookmarks-list a .bookmark-icon {
+  color: #4a4a4a;
 }
 
 body.dark .bookmarks-list a:hover {
@@ -1457,29 +1581,34 @@ body.dark .bookmarks-list a:hover {
   color: #d4d4d4;
 }
 
-body.dark .bookmarks-list a.read {
-  border-left-color: #34a853;
+body.dark .bookmarks-list a:hover .bookmark-icon {
   color: #808080;
 }
 
 body.dark .bookmarks-list a.active {
   background: #2a2d2e;
   color: #4fc1ff;
-  border-left-color: #4fc1ff;
 }
 
-body.dark .bookmarks-footer {
-  border-top-color: #3c3c3c;
+body.dark .bookmarks-list a.active .bookmark-icon {
+  color: #34a853;
 }
 
-body.dark .bookmarks-backtotop {
-  color: #9d9d9d;
-  border-color: #3c3c3c;
+body.dark .bookmarks-top-btn {
+  color: #808080;
 }
 
-body.dark .bookmarks-backtotop:hover {
+body.dark .bookmarks-top-btn:hover {
   background: #3c3c3c;
-  color: #d4d4d4;
+  color: #4fc1ff;
+}
+
+body.dark .bookmarks-list {
+  scrollbar-color: #555 transparent;
+}
+
+body.dark .bookmarks-list::-webkit-scrollbar-thumb {
+  background: #555;
 }
 
 body.dark #article-header {
@@ -1599,24 +1728,7 @@ body.dark .weight-option.active {
   color: #1e1e1e;
 }
 
-body.dark .reader-hints-card {
-  background: #2a2213; /* dark amber-tinted surface */
-  border-color: #a86e12;
-  border-left-color: #f59e0b;
-  color: #fcd34d;
-}
 
-body.dark .hints-card-title {
-  color: #fbbf24;
-}
-
-body.dark .hints-card-header .hint-close {
-  color: #fbbf24;
-}
-
-body.dark .hints-card-list .hint-item {
-  color: #fcd34d;
-}
 
 body.dark .dialog {
   background: #252526;
@@ -1697,29 +1809,250 @@ body.focus-mode #article-body .focus-dim.focus-active {
   opacity: 1 !important;
 }
 
-/* ===== Responsive: auto-hide bookmarks on narrow viewports ===== */
-@media (max-width: 900px) {
+/* ===== Responsive: narrow viewports ===== */
+@media (max-width: 700px) {
   .bookmarks-panel:not(.hidden) {
-    width: 220px;
+    width: 200px;
+    max-height: 60vh;
   }
 }
 
-@media (max-width: 700px) {
-  .bookmarks-panel {
-    transform: translateX(-100%) !important;
-    opacity: 0 !important;
-    pointer-events: none !important;
-  }
+/* ===== Shortcut Cheatsheet Overlay ===== */
+.shortcut-cheatsheet {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.4);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
 
-  .bookmarks-panel:not(.hidden) {
-    transform: translateX(0) !important;
-    opacity: 1 !important;
-    pointer-events: auto !important;
-    position: fixed;
-    width: 80vw;
-    max-width: 280px;
-    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.15);
-  }
+.shortcut-cheatsheet.visible {
+  opacity: 1;
+}
+
+@keyframes cheatsheetDismiss {
+  0% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.95); }
+}
+
+.shortcut-cheatsheet.cheatsheet-dismiss {
+  animation: cheatsheetDismiss 0.2s ease-out forwards;
+  pointer-events: none;
+}
+
+.cheatsheet-card {
+  background: white;
+  border-radius: 12px;
+  padding: 20px 24px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+  min-width: 240px;
+  max-width: 320px;
+}
+
+.cheatsheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #212529;
+}
+
+.cheatsheet-close {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  font-size: 18px;
+  color: #6c757d;
+  cursor: pointer;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cheatsheet-close:hover {
+  background: #e9ecef;
+  color: #212529;
+}
+
+.cheatsheet-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cheatsheet-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.cheatsheet-row kbd {
+  display: inline-block;
+  min-width: 32px;
+  padding: 2px 6px;
+  background: #f0f0f0;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  text-align: center;
+  color: #333;
+}
+
+.cheatsheet-row span {
+  font-size: 12px;
+  color: #495057;
+}
+
+.cheatsheet-section {
+  margin-top: 2px;
+}
+
+.cheatsheet-section kbd {
+  background: #1a73e8;
+  border-color: #1a73e8;
+  color: white;
+  font-size: 11px;
+}
+
+.cheatsheet-sep {
+  height: 1px;
+  background: #e9ecef;
+  margin: 6px 0;
+}
+
+/* Dark mode */
+body.dark .cheatsheet-card {
+  background: #2d2d2d;
+}
+
+body.dark .cheatsheet-header {
+  color: #e0e0e0;
+}
+
+body.dark .cheatsheet-close {
+  color: #aaa;
+}
+
+body.dark .cheatsheet-close:hover {
+  background: #3c3c3c;
+  color: #e0e0e0;
+}
+
+body.dark .cheatsheet-row kbd {
+  background: #3c3c3c;
+  border-color: #555;
+  color: #e0e0e0;
+}
+
+body.dark .cheatsheet-row span {
+  color: #b0b0b0;
+}
+
+body.dark .cheatsheet-section kbd {
+  background: #4fc1ff;
+  border-color: #4fc1ff;
+  color: #1e1e1e;
+}
+
+body.dark .cheatsheet-sep {
+  background: #3c3c3c;
+}
+
+/* ===== Tips close button & bullet styling ===== */
+.zen-tips-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.zen-tips-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: #92400e;
+  flex: 1;
+}
+
+.zen-tips-close {
+  width: 20px;
+  height: 20px;
+  border: none;
+  background: transparent;
+  font-size: 16px;
+  color: #92400e;
+  cursor: pointer;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.zen-tips-close:hover {
+  background: rgba(146, 64, 14, 0.1);
+}
+
+.zen-tips-list {
+  list-style: none;
+  padding: 0;
+  margin: 6px 0 0 0;
+}
+
+.zen-tips-item {
+  font-size: 11.5px;
+  color: #78350f;
+  padding: 3px 0 3px 16px;
+  position: relative;
+}
+
+.zen-tips-item::before {
+  content: '\2022';
+  position: absolute;
+  left: 4px;
+  color: #d97706;
+}
+
+@keyframes tipItemReveal {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.zen-tips-item-reveal {
+  animation: tipItemReveal 0.25s ease forwards;
+  opacity: 0;
+}
+
+.zen-tips-more {
+  display: inline-block;
+  margin: 4px 0 0 16px;
+  font-size: 11px;
+  color: #b45309;
+  text-decoration: none;
+  cursor: pointer;
+  opacity: 0.8;
+}
+
+.zen-tips-more:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+
+.zen-tips-footer {
+  margin-top: 8px;
+  font-size: 10px;
+  color: #b45309;
+  opacity: 0.7;
+  text-align: right;
 }
 
 /* ===== Print styles ===== */
@@ -1762,7 +2095,10 @@ body.focus-mode #article-body .focus-dim.focus-active {
   .right-toolbar,
   .gear-btn,
   .bookmarks-panel,
-  .progress-bar {
+  .bookmarks-collapsed-btn,
+  .progress-track,
+  .zen-tips,
+  .shortcut-cheatsheet {
     display: none !important;
   }
 
@@ -1773,6 +2109,12 @@ body.focus-mode #article-body .focus-dim.focus-active {
   body.focus-mode #article-body .focus-dim.focus-near,
   body.focus-mode #article-body .focus-dim.focus-active {
     opacity: 1 !important;
+  }
+
+  /* Force single-column for PDF/print — multi-column CSS causes content
+     to be clipped at page boundaries in Chrome's print renderer */
+  #article-body {
+    column-count: 1 !important;
   }
 
   #reader-content {
@@ -1798,6 +2140,7 @@ body.focus-mode #article-body .focus-dim.focus-active {
   .image-resize-bar,
   .reader-toast,
   .reader-hints-card,
+  .zen-tips,
   .appearance-popover {
     display: none !important;
   }
