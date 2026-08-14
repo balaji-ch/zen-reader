@@ -119,61 +119,7 @@ node generate-icons.js
 
 ## Changelog
 
-### v2.1.0
-- **Layout density presets** — Compact / Comfortable / Spacious (line spacing + column width), remembered across reloads
-- **Bookmarks progress** — sections you've scrolled past get a read indicator; added a Back-to-top button in the panel footer
-- **Focus mode persists** across reloads
-- **Fix:** focus mode no longer dims PDF/print output — exports are always full-color regardless of focus state (custom CSS persistence was already in place)
-
-### v2.0.0
-Major release — adds math rendering, Markdown export, focus mode, custom CSS,
-reading stats, and a movable/groupable toolbar.
-
-- **Math rendering (KaTeX):** LaTeX math is recovered from MathJax's in-memory source (via a MAIN-world grabber) and from KaTeX/MathJax DOM annotations, then typeset with KaTeX — works even on async MathJax `tex-svg` pages where the source is otherwise lost
-- **Markdown export:** save the cleaned article as `.md` (headings, code fences with language, lists, tables, links)
-- **Focus mode (Alt+O):** dims all but the block you're reading
-- **Custom CSS:** apply your own styles from the Appearance popover
-- **Reading stats:** estimated read time + word count, plus live selection word count
-- **Movable toolbar:** drag by the grip handle (position persisted); explicit minimize button collapses it into the gear with a bounce
-- **Toolbar grouping:** buttons grouped View / Edit / Export with dividers
-- **Movable tips card:** drag by its header (position persisted); auto-shown card fades after 7s, button-opened card stays until closed
-- **More shortcuts:** Alt+T (tips), Alt+O (focus), Alt+P (print), Alt+S (save PDF), Alt+M (markdown)
-- **Remote image fix:** referrer/hotlink-protected image CDNs load via a background-worker byte fetch
-- **Extraction robustness:** generic paywall/overlay removal, lazy-image resolution, `<pre>` hoisting, and heading normalization (no site-specific rules)
-- Removed the noise-cleanup (sparkles) button
-- Fixed CSP `style-src` to allow inline styles (was silently aborting the reader)
-
-### v1.4.0
-- Dark mode with neutral gray theme and VS Code Dark+ syntax highlighting
-- Auto-detects system `prefers-color-scheme` on first use
-- Reading progress bar (thin gradient at top)
-- All 13 font families bundled locally (~500KB woff2, full offline support)
-- Google Fonts CDN made non-blocking (instant page load)
-- PDF Table of Contents option (checkbox in PDF dialog)
-- PDF and Print always export in light mode regardless of dark mode state
-- Edit mode toggle (pencil icon) — hover-to-delete and double-click-to-edit only active in edit mode
-- Alt+hover as shortcut to delete without entering edit mode
-- Keyboard shortcuts: Alt+B, Alt+D, Alt+F, Alt+E, Esc (shown in tooltips)
-- Responsive bookmarks panel (narrows <900px, overlay <700px)
-- Toolbar collapse paused while Appearance popover is open
-
-### v1.3.0
-- Bookmarks panel: heading outline visible in reader (left sidebar, toggleable, persisted state)
-- Redesigned UI: minimal banner + floating right toolbar that collapses to a gear icon after 10s
-- Appearance popover: combined text/code font settings in one panel
-- Tips repositioned below toolbar with smooth fade dismiss
-- Re-extraction without page refresh (removed single-run guard)
-- Scroll-margin-top on headings for proper bookmark navigation
-- Monochrome icon toolbar (bookmark ribbon, font T, sparkles, lightbulb, printer, PDF)
-
-### v1.2.0
-- Native PDF export via Chrome DevTools Protocol with bookmarks and tagged output
-- Custom margins (presets + custom) and page size selection
-- Noise cleanup button
-- Image resize with multi-select
-
-### v1.1.0
-- Initial release with article extraction, syntax highlighting, custom fonts, inline editing, element deletion
+See [Releases](https://github.com/balaji-ch/zen-reader/releases) for full version history.
 
 ## License
 
