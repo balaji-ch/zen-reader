@@ -30,7 +30,7 @@
     }
   },
   "web_accessible_resources": [{
-    "resources": ["reader.html", "reader.js", "reader/*", "css/*", "lib/*", "fonts/*"],
+    "resources": ["reader.html", "reader/*", "css/*", "lib/*", "fonts/*"],
     "matches": ["<all_urls>"]
   }],
   "content_security_policy": {
