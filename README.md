@@ -50,7 +50,7 @@ A Chrome extension that transforms cluttered web articles into a clean, distract
 
 ### From release ZIP
 
-1. Download `ZenReader v3.0.1.zip` from [Releases](https://github.com/balaji-ch/zen-reader/releases)
+1. Download `ZenReader.v3.0.1.zip` from [Releases](https://github.com/balaji-ch/zen-reader/releases)
 2. Extract to a folder
 3. Load unpacked in Chrome as described above
 
