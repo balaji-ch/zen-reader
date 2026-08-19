@@ -135,10 +135,25 @@ function renderArticle() {
 
   if (data.url) {
     const domain = new URL(data.url).hostname;
-    articleSource.innerHTML = `<a href="${data.url}" target="_blank">${domain}</a>`;
+    // Built via DOM APIs (not innerHTML + string interpolation) so a
+    // crafted page URL can't break out of the attribute.
+    articleSource.textContent = '';
+    const sourceLink = document.createElement('a');
+    sourceLink.href = data.url;
+    sourceLink.target = '_blank';
+    sourceLink.rel = 'noopener noreferrer';
+    sourceLink.textContent = domain;
+    articleSource.appendChild(sourceLink);
   }
 
-  articleBody.innerHTML = data.content;
+  // Readability strips <script>/<noscript> but is NOT an XSS sanitizer —
+  // arbitrary third-party page HTML can still carry on*-handlers,
+  // javascript: URLs, etc. This extension holds `debugger`, `downloads`,
+  // and <all_urls> host permissions, so run everything through DOMPurify
+  // before it ever touches innerHTML on this privileged page.
+  articleBody.innerHTML = DOMPurify.sanitize(data.content, {
+    ADD_ATTR: ['target'], // keep target="_blank" on links inside articles
+  });
 
   renderMath();
   loadRemoteImages();

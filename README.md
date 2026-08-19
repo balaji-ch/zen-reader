@@ -95,7 +95,8 @@ zen-reader/
 ├── content.js             # Article extraction + math/code/image preprocessing
 ├── math-grabber.js        # MAIN-world script: recovers LaTeX from MathJax's store
 ├── popup.html / popup.js  # Extension popup (injects math-grabber then content.js)
-├── reader.html / reader.js # Reader view + bookmarks + PDF/Markdown export
+├── reader.html            # Reader view shell
+├── reader/                # Reader view modules (rendering, bookmarks, edit, export, toolbar)
 ├── css/
 │   ├── fonts.css          # Bundled @font-face declarations
 │   ├── reader.css         # All styling (banner, toolbar, bookmarks, dark mode, print)
@@ -103,6 +104,7 @@ zen-reader/
 ├── fonts/                 # Bundled woff2 fonts (13 families, latin subset)
 ├── lib/
 │   ├── Readability.js     # Mozilla Readability
+│   ├── dompurify/         # DOMPurify (sanitizes extracted article HTML before render)
 │   ├── highlight.min.js   # highlight.js
 │   └── katex/             # KaTeX (js, css, fonts) for math typesetting
 └── icons/                 # Extension icons (16/48/128px)

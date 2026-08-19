@@ -39,7 +39,15 @@ export function buildBookmarks() {
     const level = parseInt(heading.tagName.charAt(1));
     const link = document.createElement('a');
     link.href = '#' + heading.id;
-    link.innerHTML = BOOKMARK_SVG + '<span>' + heading.textContent.trim() + '</span>';
+    // Icon markup is a fixed constant (safe to set via innerHTML); the
+    // heading's text is arbitrary page content, so it's appended as a real
+    // text node rather than concatenated into an HTML string — textContent
+    // re-parsed as innerHTML is its own injection vector (e.g. a heading
+    // literally titled "<img src=x>").
+    link.innerHTML = BOOKMARK_SVG;
+    const labelSpan = document.createElement('span');
+    labelSpan.textContent = heading.textContent.trim();
+    link.appendChild(labelSpan);
     link.setAttribute('data-level', level);
     link.setAttribute('data-heading-id', heading.id);
     link.addEventListener('click', (e) => {
