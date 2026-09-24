@@ -139,15 +139,18 @@ const PAGE_SIZES = {
  * and triggers a download.
  */
 async function handlePdfGeneration(tabId, options) {
-  const { filename, pageSize, marginTop, marginRight, marginBottom, marginLeft } = options;
+  const { filename, pageSize, orientation, marginTop, marginRight, marginBottom, marginLeft } = options;
   const debuggee = { tabId };
 
   try {
     // Attach debugger to the tab
     await chrome.debugger.attach(debuggee, '1.3');
 
-    // Get page dimensions
+    // Get page dimensions (swap for landscape)
     const dims = PAGE_SIZES[pageSize] || PAGE_SIZES.a4;
+    const isLandscape = orientation === 'landscape';
+    const paperWidth = isLandscape ? dims.height : dims.width;
+    const paperHeight = isLandscape ? dims.width : dims.height;
 
     // Convert margins from mm to inches (1 inch = 25.4 mm)
     const mTop = marginTop / 25.4;
@@ -159,8 +162,9 @@ async function handlePdfGeneration(tabId, options) {
     const result = await chrome.debugger.sendCommand(debuggee, 'Page.printToPDF', {
       printBackground: true,
       preferCSSPageSize: false,
-      paperWidth: dims.width,
-      paperHeight: dims.height,
+      landscape: isLandscape,
+      paperWidth: paperWidth,
+      paperHeight: paperHeight,
       marginTop: mTop,
       marginRight: mRight,
       marginBottom: mBottom,

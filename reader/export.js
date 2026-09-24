@@ -27,28 +27,44 @@ const marginCustomRow = document.getElementById('margin-custom-row');
 
 const MARGIN_PRESETS = {
   none: { top: 0, right: 0, bottom: 0, left: 0 },
-  minimal: { top: 5, right: 5, bottom: 5, left: 5 }
+  minimal: { top: 5, right: 5, bottom: 5, left: 5 },
+  normal: { top: 15, right: 15, bottom: 15, left: 15 }
 };
 
 let activeMarginPreset = 'minimal';
 
-marginPresets.addEventListener('click', (e) => {
-  const btn = e.target.closest('.margin-preset-btn');
-  if (!btn) return;
+function syncCustomValues(preset) {
+  const p = MARGIN_PRESETS[preset];
+  if (!p) return;
+  if (marginTopInput) marginTopInput.value = String(p.top);
+  if (marginBottomInput) marginBottomInput.value = String(p.bottom);
+  if (marginLeftInput) marginLeftInput.value = String(p.left);
+  if (marginRightInput) marginRightInput.value = String(p.right);
+}
 
-  const preset = btn.dataset.preset;
-  activeMarginPreset = preset;
-
-  marginPresets.querySelectorAll('.margin-preset-btn').forEach((b) => {
-    b.classList.toggle('active', b === btn);
+function setCustomEnabled(enabled) {
+  [marginTopInput, marginRightInput, marginBottomInput, marginLeftInput].forEach(el => {
+    if (el) el.disabled = !enabled;
   });
+  if (marginCustomRow) marginCustomRow.classList.toggle('custom-enabled', enabled);
+}
 
-  if (preset === 'custom') {
-    marginCustomRow.classList.remove('hidden');
-  } else {
-    marginCustomRow.classList.add('hidden');
-  }
-});
+if (marginPresets) {
+  marginPresets.addEventListener('change', (e) => {
+    const target = e.target;
+    if (!target.matches('input[name="margin-preset"]')) return;
+    activeMarginPreset = target.value;
+    if (activeMarginPreset === 'custom') {
+      setCustomEnabled(true);
+    } else {
+      syncCustomValues(activeMarginPreset);
+      setCustomEnabled(false);
+    }
+  });
+  // init state (minimal selected by default) -> show 5mm greyed
+  syncCustomValues(activeMarginPreset);
+  setCustomEnabled(activeMarginPreset === 'custom');
+}
 
 btnPdf.addEventListener('click', () => {
   pdfDialogOverlay.classList.remove('hidden');
@@ -64,7 +80,22 @@ pdfDialogOverlay.addEventListener('click', (e) => {
   }
 });
 
-const pdfTocCheckbox = document.getElementById('pdf-toc');
+const tocRadio = document.getElementById('pdf-toc');
+if (tocRadio) {
+  tocRadio.addEventListener('click', () => {
+    // allow single radio to toggle off on second click
+    if (tocRadio.dataset.wasChecked === 'true') {
+      tocRadio.checked = false;
+      tocRadio.dataset.wasChecked = 'false';
+    } else {
+      tocRadio.dataset.wasChecked = 'true';
+    }
+  });
+  tocRadio.addEventListener('change', () => {
+    tocRadio.dataset.wasChecked = tocRadio.checked ? 'true' : 'false';
+  });
+}
+const getTocWith = () => !!document.getElementById('pdf-toc')?.checked;
 
 pdfGenerateBtn.addEventListener('click', async () => {
   pdfDialogOverlay.classList.add('hidden');
@@ -75,7 +106,7 @@ pdfGenerateBtn.addEventListener('click', async () => {
   if (wasDark) document.body.classList.remove('dark');
 
   let tocElement = null;
-  if (pdfTocCheckbox.checked) {
+  if (getTocWith()) {
     tocElement = buildTocPage();
   }
 
@@ -173,6 +204,21 @@ async function generatePdf() {
     mLeft = preset.left;
   }
   const pageSize = pageSizeSelect.value || 'a4';
+  const orientation = document.querySelector('input[name="pdf-orientation"]:checked')?.value || 'portrait';
+
+  // Chrome (and other Chromium browsers) expose chrome.debugger, which
+  // background.js uses via the CDP Page.printToPDF command for a true
+  // headless, no-dialog export. Firefox has no debugger-protocol API
+  // available to extensions at all, so there's no equivalent — fall back
+  // to the browser's native print dialog, which the user can save as PDF
+  // themselves. We still apply the chosen page size/margins via a
+  // temporary @page rule so the fallback respects the same dialog inputs.
+  const hasNativePdfPipeline = typeof chrome !== 'undefined' && !!chrome.debugger;
+
+  if (!hasNativePdfPipeline) {
+    printFallback({ pageSize, orientation, mTop, mRight, mBottom, mLeft });
+    return;
+  }
 
   const tab = await chrome.tabs.getCurrent();
   const tabId = tab ? tab.id : undefined;
@@ -187,6 +233,7 @@ async function generatePdf() {
     options: {
       filename: sanitizeFilename(title) + '.pdf',
       pageSize: pageSize,
+      orientation: orientation,
       marginTop: mTop,
       marginRight: mRight,
       marginBottom: mBottom,
@@ -197,6 +244,24 @@ async function generatePdf() {
   if (!response || !response.success) {
     throw new Error((response && response.error) || 'PDF generation failed');
   }
+}
+
+function printFallback({ pageSize, orientation, mTop, mRight, mBottom, mLeft }) {
+  // CSS page-size keywords accept the same lowercase names our select uses
+  // (a4, letter, legal) directly. Landscape appends keyword.
+  const orient = orientation === 'landscape' ? ' landscape' : '';
+  const style = document.createElement('style');
+  style.id = 'zen-print-page-style';
+  style.textContent = `@page { size: ${pageSize}${orient}; margin: ${mTop}mm ${mRight}mm ${mBottom}mm ${mLeft}mm; }`;
+  document.head.appendChild(style);
+
+  try {
+    window.print();
+  } finally {
+    style.remove();
+  }
+
+  showToast('Choose "Save as PDF" in the print dialog');
 }
 
 // ===== Export as Markdown =====

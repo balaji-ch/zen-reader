@@ -778,29 +778,52 @@ body.dark .custom-css-textarea {
 .dialog {
   background: white;
   border-radius: 10px;
-  padding: 24px;
-  min-width: 320px;
-  max-width: 400px;
+  padding: 16px 18px;
+  min-width: 300px;
+  max-width: 360px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
 }
 
 .dialog h3 {
-  margin: 0 0 18px;
-  font-size: 16px;
+  margin: 0 0 12px;
+  font-size: 14px;
   font-weight: 600;
   color: #212529;
 }
 
 .dialog-row {
-  margin-bottom: 16px;
+  margin-bottom: 10px;
 }
 
 .dialog-row > label {
   display: block;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 500;
   color: #6c757d;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
+}
+
+.dialog-row-split {
+  display: flex;
+  gap: 14px;
+}
+
+.dialog-col {
+  flex: 1;
+}
+
+.dialog-col > label {
+  display: block;
+  font-size: 11px;
+  font-weight: 500;
+  color: #6c757d;
+  margin-bottom: 6px;
+}
+
+.orientation-radios {
+  display: flex;
+  gap: 12px;
+  margin-top: 2px;
 }
 
 .margin-inputs {
@@ -837,46 +860,107 @@ body.dark .custom-css-textarea {
   box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.15);
 }
 
-/* Margin preset segmented control */
-.margin-presets {
+/* Margin radios + D-pad custom */
+.margin-radios {
   display: flex;
-  border: 1px solid var(--toolbar-border);
-  border-radius: 4px;
-  overflow: hidden;
+  flex-wrap: nowrap;
+  gap: 14px;
+  margin-top: 4px;
 }
 
-.margin-preset-btn {
-  flex: 1;
-  padding: 7px 10px;
+@media (max-width: 380px) {
+  .margin-radios { flex-wrap: wrap; }
+}
+
+.radio-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: 12px;
   font-weight: 500;
-  border: none;
-  background: white;
+  color: #495057;
   cursor: pointer;
+}
+
+.radio-label input[type="radio"] {
+  accent-color: #1a73e8;
+  width: 14px;
+  height: 14px;
+}
+
+.margin-custom-grid {
+  margin-top: 8px;
+  padding: 8px;
+  border: 1px solid var(--toolbar-border);
+  border-radius: 6px;
+  background: #fff;
+  pointer-events: none;
+}
+
+.margin-custom-grid.custom-enabled {
+  pointer-events: auto;
+}
+
+.margin-dpad {
+  display: grid;
+  grid-template-columns: 68px 68px 68px;
+  grid-template-rows: auto auto auto;
+  grid-template-areas:
+    ". top ."
+    "left center right"
+    ". bottom .";
+  gap: 4px;
+  justify-items: center;
+  align-items: center;
+  width: fit-content;
+  margin: 0 auto;
+}
+
+.dpad-top { grid-area: top; }
+.dpad-left { grid-area: left; }
+.dpad-right { grid-area: right; }
+.dpad-bottom { grid-area: bottom; }
+.dpad-center {
+  grid-area: center;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: #6c757d;
+  border: 1px dashed #ced4da;
+  border-radius: 3px;
+  background: #f8f9fa;
+}
+
+.dpad-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #495057;
+}
+
+.dpad-label select {
+  width: 62px;
+  padding: 3px 4px;
+  font-size: 11px;
+  border: 1px solid var(--toolbar-border);
+  border-radius: 4px;
+  background: white;
   text-align: center;
-  transition: background 0.15s, color 0.15s;
-  border-right: 1px solid var(--toolbar-border);
 }
 
-.margin-preset-btn:last-child {
-  border-right: none;
-}
-
-.margin-preset-btn:hover {
-  background: #f0f0f0;
-}
-
-.margin-preset-btn.active {
-  background: #343a40;
-  color: white;
-}
-
-.margin-preset-btn.active:hover {
-  background: #1d2124;
-}
-
-.margin-custom-row.hidden {
-  display: none;
+.dpad-label select:disabled {
+  background: #fff;
+  color: #212529;
+  border-color: var(--toolbar-border);
+  opacity: 1;
+  cursor: not-allowed;
 }
 
 .dialog-row select {
@@ -886,6 +970,13 @@ body.dark .custom-css-textarea {
   border: 1px solid var(--toolbar-border);
   border-radius: 4px;
   background: white;
+}
+
+/* override for D-pad dropdowns (keep 62px, not 100%) */
+.margin-dpad .dpad-label select {
+  width: 62px;
+  padding: 3px 4px;
+  font-size: 11px;
 }
 
 .checkbox-label {
@@ -1121,7 +1212,7 @@ body.dark .article-stats {
   vertical-align: middle;
   margin: 0 0.15em;
   border-radius: 0;
-  max-height: 1.2em;
+  max-height: none;
   width: auto;
 }
 

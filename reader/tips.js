@@ -30,11 +30,17 @@ export function showHintCards(autoDismiss = false) {
   // Header row: lightbulb + title + close button
   const header = document.createElement('div');
   header.className = 'zen-tips-header';
-  header.innerHTML = `<span class="zen-tips-bulb">\u{1F4A1}</span><span class="zen-tips-title">Edit Mode Tips</span>`;
+  const bulb = document.createElement('span');
+  bulb.className = 'zen-tips-bulb';
+  bulb.textContent = '\u{1F4A1}';
+  const title = document.createElement('span');
+  title.className = 'zen-tips-title';
+  title.textContent = 'Edit Mode Tips';
+  header.append(bulb, title);
 
   const closeBtn = document.createElement('button');
   closeBtn.className = 'zen-tips-close';
-  closeBtn.innerHTML = '&times;';
+  closeBtn.textContent = '\u00D7';
   closeBtn.title = 'Close';
   closeBtn.addEventListener('click', () => dismissTips(container));
   header.appendChild(closeBtn);

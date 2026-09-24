@@ -50,7 +50,7 @@ A Chrome extension that transforms cluttered web articles into a clean, distract
 
 ### From release ZIP
 
-1. Download `ZenReader.v3.0.1.zip` from [Releases](https://github.com/balaji-ch/zen-reader/releases)
+1. Download `ZenReader.v3.0.2.zip` from [Releases](https://github.com/balaji-ch/zen-reader/releases)
 2. Extract to a folder
 3. Load unpacked in Chrome as described above
 
@@ -65,7 +65,7 @@ The toolbar groups buttons into **View** / **Edit** / **Export**. It auto-collap
 
 ## PDF vs Print
 
-- **PDF** (`Alt+S`) — Generates a bookmarked, tagged, accessible `.pdf` with configurable margins and page size. Headings become PDF outline entries. Includes all edits/resizes.
+- **PDF** (`Alt+S`) — Generates a bookmarked, tagged, accessible `.pdf` with configurable margins, page size, and portrait/landscape orientation. Headings become PDF outline entries. Includes all edits/resizes.
 - **Print** (`Alt+P`) — Opens the native browser print dialog. Use for quick printouts or if you prefer the system flow.
 
 > Chrome briefly shows "debugging started" during PDF generation — this is expected (the extension uses the DevTools Protocol to access the native renderer).

@@ -271,11 +271,13 @@ function toggleShortcutCheatsheet() {
 
   const header = document.createElement('div');
   header.className = 'cheatsheet-header';
-  header.innerHTML = '<span>Keyboard Shortcuts</span>';
+  const titleSpan = document.createElement('span');
+  titleSpan.textContent = 'Keyboard Shortcuts';
+  header.appendChild(titleSpan);
 
   const closeBtn = document.createElement('button');
   closeBtn.className = 'cheatsheet-close';
-  closeBtn.innerHTML = '&times;';
+  closeBtn.textContent = '\u00D7';
   closeBtn.addEventListener('click', () => toggleShortcutCheatsheet());
   header.appendChild(closeBtn);
   card.appendChild(header);
@@ -295,13 +297,19 @@ function toggleShortcutCheatsheet() {
     if (!desc) {
       const hdr = document.createElement('div');
       hdr.className = 'cheatsheet-row cheatsheet-section';
-      hdr.innerHTML = `<kbd>${key}</kbd>`;
+      const kbd = document.createElement('kbd');
+      kbd.textContent = key;
+      hdr.appendChild(kbd);
       grid.appendChild(hdr);
       return;
     }
     const row = document.createElement('div');
     row.className = 'cheatsheet-row';
-    row.innerHTML = `<kbd>${key}</kbd><span>${desc}</span>`;
+    const kbd = document.createElement('kbd');
+    kbd.textContent = key;
+    const descSpan = document.createElement('span');
+    descSpan.textContent = desc;
+    row.append(kbd, descSpan);
     grid.appendChild(row);
   });
 

@@ -36,7 +36,12 @@ export function performUndo() {
       break;
     }
     case 'edit': {
-      action.element.innerHTML = action.oldHTML;
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(action.oldHTML, 'text/html');
+      action.element.replaceChildren();
+      while (doc.body.firstChild) {
+        action.element.appendChild(doc.body.firstChild);
+      }
       showToast('Undo: text reverted');
       break;
     }

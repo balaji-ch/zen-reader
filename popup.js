@@ -50,11 +50,15 @@ function renderHistory() {
     const history = result.articleHistory || [];
 
     if (history.length === 0) {
-      listEl.innerHTML = '<li class="history-empty">No recent articles</li>';
+      listEl.replaceChildren();
+      const li = document.createElement('li');
+      li.className = 'history-empty';
+      li.textContent = 'No recent articles';
+      listEl.appendChild(li);
       return;
     }
 
-    listEl.innerHTML = '';
+    listEl.replaceChildren();
     // Show most recent first (stored newest-last, so reverse)
     const items = history.slice().reverse().slice(0, 10);
 
@@ -95,7 +99,7 @@ function renderHistory() {
       // Delete button (X) per item
       const delBtn = document.createElement('button');
       delBtn.className = 'history-delete';
-      delBtn.innerHTML = '&times;';
+      delBtn.textContent = '\u00D7';
       delBtn.title = 'Remove from history';
       delBtn.addEventListener('click', (e) => {
         e.preventDefault();
@@ -104,11 +108,31 @@ function renderHistory() {
         li.remove();
         // If list is now empty show placeholder
         if (listEl.querySelectorAll('.history-li').length === 0) {
-          listEl.innerHTML = '<li class="history-empty">No recent articles</li>';
+          listEl.replaceChildren();
+          const emptyLi = document.createElement('li');
+          emptyLi.className = 'history-empty';
+          emptyLi.textContent = 'No recent articles';
+          listEl.appendChild(emptyLi);
+        }
+      });
+
+      // Open original article link - simple ">" like red "×" delete
+      const openOriginal = document.createElement('a');
+      openOriginal.className = 'history-open-original';
+      openOriginal.href = entry.url || '#';
+      openOriginal.title = 'Open original article';
+      openOriginal.textContent = '›';
+      if (!entry.url) openOriginal.style.display = 'none';
+      openOriginal.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (entry.url) {
+          chrome.tabs.create({ url: entry.url });
         }
       });
 
       li.appendChild(a);
+      li.appendChild(openOriginal);
       li.appendChild(delBtn);
       listEl.appendChild(li);
     });
@@ -122,7 +146,11 @@ function renderHistory() {
     clearLink.addEventListener('click', (e) => {
       e.preventDefault();
       chrome.storage.local.remove('articleHistory', () => {
-        listEl.innerHTML = '<li class="history-empty">No recent articles</li>';
+        listEl.replaceChildren();
+        const emptyLi = document.createElement('li');
+        emptyLi.className = 'history-empty';
+        emptyLi.textContent = 'No recent articles';
+        listEl.appendChild(emptyLi);
       });
     });
     clearLi.appendChild(clearLink);
@@ -164,15 +192,19 @@ historyToggle.addEventListener('click', () => {
   if (isHidden) {
     historyList.style.display = '';
     historyChevron.classList.add('open');
-    // Load history on first expand (lazy)
-    if (!historyLoaded) {
-      historyLoaded = true;
-      if (chrome.extension.inIncognitoContext) {
-        historyList.innerHTML = '<li class="history-empty">History hidden in private mode</li>';
-      } else {
-        renderHistory();
+// Load history on first expand (lazy)
+      if (!historyLoaded) {
+        historyLoaded = true;
+        if (chrome.extension.inIncognitoContext) {
+          historyList.replaceChildren();
+          const emptyLi = document.createElement('li');
+          emptyLi.className = 'history-empty';
+          emptyLi.textContent = 'History hidden in private mode';
+          historyList.appendChild(emptyLi);
+        } else {
+          renderHistory();
+        }
       }
-    }
   } else {
     historyList.style.display = 'none';
     historyChevron.classList.remove('open');

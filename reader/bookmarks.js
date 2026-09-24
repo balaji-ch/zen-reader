@@ -25,10 +25,13 @@ if (btnScrollTop) {
 // ===== Build bookmarks from headings =====
 export function buildBookmarks() {
   const headings = articleBody.querySelectorAll('h1, h2, h3, h4, h5, h6');
-  bookmarksList.innerHTML = '';
+  bookmarksList.replaceChildren();
 
   if (headings.length === 0) {
-    bookmarksList.innerHTML = '<p style="padding: 12px 16px; color: #6c757d; font-size: 12px;">No headings found in this article.</p>';
+    const p = document.createElement('p');
+    p.style.cssText = 'padding: 12px 16px; color: #6c757d; font-size: 12px;';
+    p.textContent = 'No headings found in this article.';
+    bookmarksList.appendChild(p);
     return;
   }
 
@@ -39,12 +42,11 @@ export function buildBookmarks() {
     const level = parseInt(heading.tagName.charAt(1));
     const link = document.createElement('a');
     link.href = '#' + heading.id;
-    // Icon markup is a fixed constant (safe to set via innerHTML); the
-    // heading's text is arbitrary page content, so it's appended as a real
-    // text node rather than concatenated into an HTML string — textContent
-    // re-parsed as innerHTML is its own injection vector (e.g. a heading
-    // literally titled "<img src=x>").
-    link.innerHTML = BOOKMARK_SVG;
+    // Icon markup is a fixed constant (safe); parse via DOMParser to avoid innerHTML
+    const svgParser = new DOMParser();
+    const svgDoc = svgParser.parseFromString(BOOKMARK_SVG, 'image/svg+xml');
+    const svgEl = svgDoc.documentElement;
+    link.appendChild(svgEl);
     const labelSpan = document.createElement('span');
     labelSpan.textContent = heading.textContent.trim();
     link.appendChild(labelSpan);
@@ -153,7 +155,14 @@ export function showReadingStats() {
 
   const statsEl = document.getElementById('article-stats');
   if (statsEl) {
-    statsEl.innerHTML = `<span>${readingTime} min read</span><span>\u00B7</span><span>${words.toLocaleString()} words</span>`;
+    statsEl.replaceChildren();
+    const timeSpan = document.createElement('span');
+    timeSpan.textContent = `${readingTime} min read`;
+    const dotSpan = document.createElement('span');
+    dotSpan.textContent = '\u00B7';
+    const wordsSpan = document.createElement('span');
+    wordsSpan.textContent = `${words.toLocaleString()} words`;
+    statsEl.append(timeSpan, dotSpan, wordsSpan);
   }
 }
 

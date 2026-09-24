@@ -84,7 +84,10 @@ appearancePopover.addEventListener('click', (e) => e.stopPropagation());
 // ===== Load article data =====
 chrome.storage.local.get('articleData', (result) => {
   if (!result.articleData) {
-    articleBody.innerHTML = '<p>No article data found. Click the extension icon on an article page first.</p>';
+    articleBody.textContent = '';
+    const p = document.createElement('p');
+    p.textContent = 'No article data found. Click the extension icon on an article page first.';
+    articleBody.appendChild(p);
     return;
   }
   setArticleData(result.articleData);
@@ -306,27 +309,38 @@ function processCodeBlocks() {
       pre.setAttribute('data-lang', lang);
       if (langIsAuto) pre.setAttribute('data-lang-auto', 'true');
       if (!code.querySelector('.hljs-keyword, .hljs-string, .hljs-comment')) {
+        const originalText = code.textContent;
         try {
-          const highlighted = hljs.highlight(code.textContent, { language: lang });
-          code.innerHTML = highlighted.value;
+          const highlighted = hljs.highlight(code.textContent, { language: lang, ignoreIllegals: true });
+          if (highlighted.value) {
+            code.innerHTML = highlighted.value;
+          } else {
+            code.textContent = originalText;
+          }
         } catch (e) {
-          const result = hljs.highlightAuto(code.textContent);
-          code.innerHTML = result.value;
-          if (result.language) {
-            lang = result.language;
-            pre.setAttribute('data-lang', lang);
-            pre.setAttribute('data-lang-auto', 'true');
+          try {
+            const result = hljs.highlightAuto(code.textContent);
+            if (result.value) {
+              code.innerHTML = result.value;
+            } else {
+              code.textContent = originalText;
+            }
+          } catch (e2) {
+            code.textContent = originalText;
           }
         }
       }
     } else {
       if (!code.querySelector('.hljs-keyword, .hljs-string, .hljs-comment')) {
+        const originalText = code.textContent;
         const result = hljs.highlightAuto(code.textContent);
-        if (result.language && result.relevance > 3) {
+        if (result.language && result.relevance > 3 && result.value) {
           code.innerHTML = result.value;
           lang = result.language;
           pre.setAttribute('data-lang', lang);
           pre.setAttribute('data-lang-auto', 'true');
+        } else {
+          code.textContent = originalText;
         }
       }
     }
@@ -349,7 +363,7 @@ function detectLanguage(el) {
 function normalizeLanguage(lang) {
   const map = {
     'py': 'python', 'js': 'javascript', 'ts': 'typescript',
-    'sh': 'bash', 'shell': 'bash', 'console': 'bash', 'zsh': 'bash',
+    'sh': 'bash', 'bash': 'bash', 'shell': 'bash', 'console': 'bash', 'zsh': 'bash',
     'yml': 'yaml', 'htm': 'html', 'cu': 'cuda', 'cuh': 'cuda',
     'cplusplus': 'cpp', 'c++': 'cpp', 'rs': 'rust', 'rb': 'ruby',
     'kt': 'kotlin', 'cs': 'csharp', 'objective-c': 'objectivec', 'objc': 'objectivec'

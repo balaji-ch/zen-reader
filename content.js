@@ -1,12 +1,32 @@
 // Content script: extracts article from current page using Readability.js
-(function() {
+(async function() {
   'use strict';
 
   // Clone the document to avoid modifying the live page
   const docClone = document.cloneNode(true);
 
+  // Inline live medium media iframe contents (same-origin) so clone has gist HTML
+  try {
+    const liveIframes = document.querySelectorAll('iframe[src*="medium.com/media"]');
+    const cloneIframes = docClone.querySelectorAll('iframe[src*="medium.com/media"]');
+    liveIframes.forEach((liveFrame, idx) => {
+      const cloneFrame = cloneIframes[idx];
+      if (!cloneFrame) return;
+      try {
+        const innerDoc = liveFrame.contentDocument;
+        if (innerDoc && innerDoc.body && innerDoc.body.innerHTML.includes('blob-code')) {
+          const parserLive = new DOMParser();
+          const parsed = parserLive.parseFromString(innerDoc.body.innerHTML, 'text/html');
+          const wrapper = docClone.createElement('div');
+          while (parsed.body.firstChild) wrapper.appendChild(docClone.adoptNode(parsed.body.firstChild));
+          cloneFrame.replaceWith(wrapper);
+        }
+      } catch (_) { /* cross-origin, fallback to fetch handler */ }
+    });
+  } catch (_) {}
+
   // ===== Pre-process: generic structural normalization (images/code/paywall) =====
-  preprocessGeneric(docClone);
+  await preprocessGeneric(docClone);
 
   // ===== Pre-process: restore LaTeX source from MathJax/KaTeX rendered output =====
   preprocessMath(docClone);
@@ -20,7 +40,7 @@
     keepClasses: true,
     // Preserve data attributes for code language detection
     serializer: function(el) {
-      return el.innerHTML;
+      return el.outerHTML;
     }
   });
 
@@ -181,7 +201,7 @@
   // non-content and prunes them, so code/images can disappear. This normalizer
   // rewrites those structures into clean semantic HTML WITHOUT any site- or
   // hostname-specific rules — it keys purely off structural signals.
-  function preprocessGeneric(doc) {
+  async function preprocessGeneric(doc) {
     const scope = doc.body;
     if (!scope) return;
 
@@ -190,6 +210,140 @@
       '[data-testid*="paywall" i], [data-component-name*="paywall" i], ' +
       '[class*="paywall" i], [id*="paywall" i], [aria-label*="paywall" i]'
     ).forEach((el) => el.remove());
+
+    // --- Medium Gist embeds: fetch and inline gist content ---
+    // Medium embeds gists via <script src="https://gist.github.com/user/gist-id.js"></script>
+    // We replace these with the actual gist code before Readability runs.
+    const gistScripts = Array.from(scope.querySelectorAll('script[src*="gist.github.com"]'));
+    // Fetch all gists in parallel, then process
+    await Promise.all(gistScripts.map(async (script) => {
+      const src = script.getAttribute('src');
+      if (!src) return;
+      try {
+        const resp = await fetch(src, { credentials: 'omit' });
+        if (!resp.ok) return;
+        const jsText = await resp.text();
+        const writeMatches = jsText.match(/document\.write\(['"]([^'"]+)['"]\)/g);
+        if (!writeMatches) return;
+        let html = writeMatches.map(m => m.replace(/^document\.write\(['"]/, '').replace(/['"]\)$/, '')).join('');
+        html = html.replace(/\\n/g, '\n').replace(/\\t/g, '\t').replace(/\\"/g, '"').replace(/\\'/g, "'").replace(/\\\\/g, '\\');
+        const parser = new DOMParser();
+        const gistDoc = parser.parseFromString(html, 'text/html');
+        // Use DOMParser instead of innerHTML
+        const wrapper = parser.parseFromString(gistDoc.body.innerHTML, 'text/html');
+        wrapper.body.querySelectorAll('.gist-file, .gist-syntax, .blob-code').forEach((el) => {
+          const text = el.textContent.trim();
+          if (!text) return;
+          const pre = doc.createElement('pre');
+          const code = doc.createElement('code');
+          code.textContent = text;
+          pre.appendChild(code);
+          el.replaceWith(pre);
+        });
+        // Move converted nodes to docClone
+        while (wrapper.body.firstChild) {
+          script.parentNode.insertBefore(wrapper.body.firstChild, script);
+        }
+        script.remove();
+      } catch (e) {
+        console.warn('ZenReader: failed to fetch gist', src, e);
+      }
+    }));
+
+    // --- Medium media iframes: <iframe src="https://medium.com/media/..."> (gist wrapper) ---
+    const mediaIframes = Array.from(scope.querySelectorAll('iframe[src*="medium.com/media"]'));
+    await Promise.all(mediaIframes.map(async (iframe) => {
+      const src = iframe.getAttribute('src');
+      if (!src) return;
+      try {
+        const resp = await fetch(src, { credentials: 'omit' });
+        if (!resp.ok) return;
+        const html = await resp.text();
+        const parser2 = new DOMParser();
+        const mediaDoc = parser2.parseFromString(html, 'text/html');
+        const gistScript = mediaDoc.querySelector('script[src*="gist.github.com"]');
+        let gistHtml = '';
+        if (gistScript) {
+          const gsrc = gistScript.getAttribute('src');
+          const gresp = await fetch(gsrc, { credentials: 'omit' });
+          if (gresp.ok) {
+            const jsText = await gresp.text();
+            const m = jsText.match(/document\.write\(['"]([^'"]+)['"]\)/g);
+            if (m) {
+              gistHtml = m.map(x => x.replace(/^document\.write\(['"]/, '').replace(/['"]\)$/, '')).join('');
+              gistHtml = gistHtml.replace(/\\n/g, '\n').replace(/\\t/g, '\t').replace(/\\"/g, '"').replace(/\\'/g, "'").replace(/\\\\/g, '\\');
+            }
+          }
+        } else {
+          const blobs = mediaDoc.querySelectorAll('.blob-code');
+          if (blobs.length) gistHtml = Array.from(blobs).map(b => b.textContent).join('\n');
+          else {
+            const pre = mediaDoc.querySelector('pre');
+            if (pre) gistHtml = pre.textContent;
+          }
+        }
+        if (!gistHtml.trim()) return;
+        const gistFragDoc = parser2.parseFromString(gistHtml, 'text/html');
+        const pre = doc.createElement('pre');
+        const code = doc.createElement('code');
+        const meta = mediaDoc.querySelector('.gist-meta');
+        if (meta) {
+          const mm = meta.textContent.match(/\.(py|js|java|cpp|c|rb|go|rs|ts|sh|bash|json|yaml|html|css)/i);
+          if (mm) code.className = 'language-' + mm[1].toLowerCase();
+        } else if (/^\s*(def |import |from |class )/.test(gistHtml)) {
+          code.className = 'language-python';
+        }
+        code.textContent = gistFragDoc.body.textContent.trim() || gistHtml.trim();
+        pre.appendChild(code);
+        iframe.replaceWith(pre);
+      } catch (e) {
+        console.warn('ZenReader: failed to fetch medium media iframe', src, e);
+      }
+    }));
+
+    // --- Already-rendered gists (e.g. Medium after JS loads): <td class="blob-code"> ---
+    // When clone is taken after Medium's JS, gist is already a <div class="gist"> table
+    // Also handle bare tables with blob-code (Medium may wrap gist differently).
+    const gistContainers = new Set(scope.querySelectorAll('.gist'));
+    // Also catch any table/figure that contains blob-code but isn't inside .gist
+    scope.querySelectorAll('.blob-code').forEach((cell) => {
+      let container = cell.closest('.gist');
+      if (!container) {
+        // Find nearest table or wrapper that holds many blob-codes
+        let t = cell.closest('table');
+        if (t && t.querySelectorAll('.blob-code').length > 0) container = t;
+        else container = cell.closest('figure') || cell.closest('div');
+      }
+      if (container) gistContainers.add(container);
+    });
+    gistContainers.forEach((gist) => {
+      if (gist.querySelector('pre')) return;
+      const lines = gist.querySelectorAll('.blob-code');
+      if (lines.length === 0) return;
+      const files = gist.querySelectorAll('.gist-file');
+      const targets = files.length ? files : [gist];
+      targets.forEach((fileEl) => {
+        const fileLines = fileEl.querySelectorAll('.blob-code');
+        const codeLines = fileLines.length ? fileLines : lines;
+        if (codeLines.length === 0) return;
+        const text = Array.from(codeLines).map((l) => l.textContent).join('\n').trim();
+        if (!text) return;
+        const pre = doc.createElement('pre');
+        const code = doc.createElement('code');
+        const meta = fileEl.querySelector('.gist-meta, [class*="file-info"]');
+        if (meta) {
+          const m = meta.textContent.match(/\.(py|js|java|cpp|c|rb|go|rs|ts|sh|bash|json|yaml|html|css)/i);
+          if (m) code.className = 'language-' + m[1].toLowerCase();
+        } else {
+          // Detect python from def/import keywords
+          if (/^\s*(def |import |from |class )/.test(text)) code.className = 'language-python';
+        }
+        code.textContent = text;
+        pre.appendChild(code);
+        if (fileEl !== gist) fileEl.replaceWith(pre);
+        else gist.replaceWith(pre);
+      });
+    });
 
     // --- Clean heading widgets so real <hN> survive extraction ---
     // Reasoning (confirmed against Readability.js internals): Readability's very
@@ -268,28 +422,140 @@
     // outermost wrapper that contains ONLY this code block.
     scope.querySelectorAll('pre').forEach((pre) => {
       const existingCode = pre.querySelector('code');
-      const codeText = (existingCode || pre).textContent;
+      const source = existingCode || pre;
+      // Convert <br> to newlines (Medium uses <br> for line breaks in code)
+      source.querySelectorAll('br').forEach((br) => br.replaceWith('\n'));
+      const codeText = source.textContent;
       if (!codeText.trim()) return;
 
       const newPre = doc.createElement('pre');
       const newCode = doc.createElement('code');
+
+      // Preserve class and data-* attributes from original <code> so
+      // language identifiers (e.g. "language-bash") survive preprocessing.
+      if (existingCode) {
+        if (existingCode.className) newCode.className = existingCode.className;
+        Array.from(existingCode.attributes).forEach((attr) => {
+          if (attr.name.startsWith('data-')) {
+            newCode.setAttribute(attr.name, attr.value);
+          }
+        });
+      }
+
+      // If no language class yet, try to detect from sibling header (e.g. <div>bash</div> before <pre>)
+      if (!newCode.className) {
+        let lang = null;
+        // Check previous sibling for language label
+        let prev = pre.previousElementSibling;
+        if (prev) {
+          const text = prev.textContent.trim().toLowerCase();
+          if (text && text.length < 20 && /^[a-z0-9+#-]+$/.test(text)) {
+            lang = text;
+          }
+        }
+        // Check parent's first child (header pattern)
+        if (!lang && pre.parentElement) {
+          const firstChild = pre.parentElement.firstElementChild;
+          if (firstChild && firstChild !== pre) {
+            const text = firstChild.textContent.trim().toLowerCase();
+            if (text && text.length < 20 && /^[a-z0-9+#-]+$/.test(text)) {
+              lang = text;
+            }
+          }
+        }
+        if (lang) newCode.className = 'language-' + lang;
+      }
+
       newCode.textContent = codeText;
       newPre.appendChild(newCode);
 
-      // Climb past ancestor <div>s that wrap ONLY this pre (single element child),
-      // so the clean <pre> replaces the whole wrapper subtree. Stop as soon as a
-      // wrapper holds other content, to avoid deleting sibling material.
+      // Detect code-block wrapper pattern (e.g. jarvislabs.ai: outer <div> containing
+      // header <div>bash</div> + copy button + <pre>). If found, replace the whole
+      // wrapper so Readability doesn't prune it as a low-score container.
       let target = pre;
-      let ancestor = pre.parentElement;
-      for (let i = 0; i < 6 && ancestor; i++) {
-        if (ancestor.tagName === 'DIV' && ancestor.children.length === 1) {
-          target = ancestor;
-          ancestor = ancestor.parentElement;
-        } else {
-          break;
+      let wrapper = null;
+      let anc = pre.parentElement;
+      for (let d = 0; d < 3 && anc; d++) {
+        const fc = anc.firstElementChild;
+        if (fc && fc !== pre) {
+          const t = fc.textContent.trim().toLowerCase();
+          if (t && t.length < 20 && /^[a-z0-9+#-]+$/.test(t) && anc.querySelector('pre') === pre) {
+            wrapper = anc;
+            break;
+          }
+        }
+        // Also check previous sibling chain inside same parent
+        anc = anc.parentElement;
+      }
+      if (wrapper) {
+        target = wrapper;
+      } else {
+        // Climb past ancestor <div>s that wrap ONLY this pre (single element child),
+        // so the clean <pre> replaces the whole wrapper subtree. Stop as soon as a
+        // wrapper holds other content, to avoid deleting sibling material.
+        let ancestor = pre.parentElement;
+        for (let i = 0; i < 6 && ancestor; i++) {
+          if (ancestor.tagName === 'DIV' && ancestor.children.length === 1) {
+            target = ancestor;
+            ancestor = ancestor.parentElement;
+          } else {
+            break;
+          }
         }
       }
       if (target.parentNode) target.parentNode.replaceChild(newPre, target);
+    });
+
+    // --- Code: hoist code blocks from generic containers (catches non-<pre> code) ---
+    // Some sites (e.g. jarvislabs.ai) wrap code in <div class="code-block"> or similar
+    // without <pre>/<code>. Readability may prune these as "unlikely candidates".
+    // Convert them early so they survive extraction.
+    const codeContainerSelectors = [
+      '[class*="code-block"]',
+      '[class*="code_block"]',
+      '[class*="codeblock"]',
+      '[class*="highlight"]',
+      '[class*="syntax"]',
+      '[class*="snippet"]',
+      'div[class*="language-"]',
+      '[data-language]',
+      '[data-lang]',
+      'pre:not(:has(code))', // bare <pre> without <code>
+    ];
+    const seen = new Set();
+    codeContainerSelectors.forEach((sel) => {
+      scope.querySelectorAll(sel).forEach((container) => {
+        if (seen.has(container)) return;
+        // Skip if already has <pre> descendant (handled above)
+        if (container.querySelector('pre')) return;
+        // Skip if it's a large container with mixed content (likely not a pure code block)
+        const text = container.textContent || '';
+        if (text.length > 5000) return; // probably a whole article section
+        // Convert to <pre><code>
+        container.querySelectorAll('br').forEach((br) => br.replaceWith('\n'));
+        const codeText = text.trim();
+        if (!codeText) return;
+        const newPre = doc.createElement('pre');
+        const newCode = doc.createElement('code');
+        // Try to extract language from class
+        const langMatch = (container.className || '').match(/language-(\w+)/);
+        if (langMatch) newCode.className = 'language-' + langMatch[1];
+        newCode.textContent = codeText;
+        newPre.appendChild(newCode);
+        seen.add(container);
+        // Replace the container (or its single-child wrapper chain)
+        let target = container;
+        let ancestor = container.parentElement;
+        for (let i = 0; i < 6 && ancestor; i++) {
+          if (ancestor.tagName === 'DIV' && ancestor.children.length === 1) {
+            target = ancestor;
+            ancestor = ancestor.parentElement;
+          } else {
+            break;
+          }
+        }
+        if (target.parentNode) target.parentNode.replaceChild(newPre, target);
+      });
     });
   }
 
@@ -375,6 +641,12 @@
         const text = Array.from(lines).map(l => l.textContent).join('\n');
         const newPre = doc.createElement('pre');
         const newCode = doc.createElement('code');
+        if (cm.className) newCode.className = cm.className;
+        Array.from(cm.attributes).forEach((attr) => {
+          if (attr.name.startsWith('data-')) {
+            newCode.setAttribute(attr.name, attr.value);
+          }
+        });
         newCode.textContent = text;
         newPre.appendChild(newCode);
         cm.parentNode.replaceChild(newPre, cm);
@@ -386,29 +658,49 @@
     // and many static-site generators (Jekyll, Pelican, Hugo, MkDocs, GitHub, etc.).
     // It's a shared convention across countless sites, not one vendor, so it stays.
     // We only ensure the <pre> has a <code> child (some emit <pre> alone).
-    const highlightDivs = doc.querySelectorAll('div.highlight > pre');
-    highlightDivs.forEach((pre) => {
-      if (!pre.querySelector('code')) {
-        const code = doc.createElement('code');
-        code.innerHTML = pre.innerHTML;
-        pre.innerHTML = '';
-        pre.appendChild(code);
-      }
-    });
+      const highlightDivs = doc.querySelectorAll('div.highlight > pre');
+      highlightDivs.forEach((pre) => {
+        if (!pre.querySelector('code')) {
+          // Convert <br> to newlines
+          pre.querySelectorAll('br').forEach((br) => br.replaceWith('\n'));
+          const code = doc.createElement('code');
+          const parentDiv = pre.parentElement;
+          if (pre.className) code.className = pre.className;
+          else if (parentDiv && parentDiv.className) code.className = parentDiv.className;
+          Array.from(pre.attributes).forEach((attr) => {
+            if (attr.name.startsWith('data-')) {
+              code.setAttribute(attr.name, attr.value);
+            }
+          });
+          if (parentDiv) {
+            Array.from(parentDiv.attributes).forEach((attr) => {
+              if (attr.name.startsWith('data-')) {
+                code.setAttribute(attr.name, attr.value);
+              }
+            });
+          }
+          while (pre.firstChild) code.appendChild(pre.firstChild);
+          pre.replaceChildren(code);
+        }
+      });
 
-    // --- Generic: any <pre> that lacks a <code> child ---
-    // Reasoning: HTML/Markdown code blocks are conventionally <pre><code>, but many
-    // editors/exporters emit a bare <pre>. Wrapping its contents in <code> gives the
-    // reader's highlighter a consistent target. Purely structural; applies anywhere.
-    const nakedPres = doc.querySelectorAll('pre');
-    nakedPres.forEach((pre) => {
-      if (!pre.querySelector('code') && pre.textContent.trim().length > 0) {
-        const code = doc.createElement('code');
-        code.innerHTML = pre.innerHTML;
-        pre.innerHTML = '';
-        pre.appendChild(code);
-      }
-    });
+// --- Generic: any <pre> that lacks a <code> child ---
+      const nakedPres = doc.querySelectorAll('pre');
+      nakedPres.forEach((pre) => {
+        if (!pre.querySelector('code') && pre.textContent.trim().length > 0) {
+          // Convert <br> to newlines
+          pre.querySelectorAll('br').forEach((br) => br.replaceWith('\n'));
+          const code = doc.createElement('code');
+          if (pre.className) code.className = pre.className;
+          Array.from(pre.attributes).forEach((attr) => {
+            if (attr.name.startsWith('data-')) {
+              code.setAttribute(attr.name, attr.value);
+            }
+          });
+          while (pre.firstChild) code.appendChild(pre.firstChild);
+          pre.replaceChildren(code);
+        }
+      });
   }
 
   // (normalizeLangName was removed along with the GeeksforGeeks-specific handler
@@ -416,9 +708,9 @@
 
   // ===== Resolve relative URLs to absolute =====
   function resolveRelativeUrls(html, baseUrl) {
-    // Parse into a temporary DOM element
-    const container = document.createElement('div');
-    container.innerHTML = html;
+    // Parse into a temporary DOM element using DOMParser (avoids innerHTML)
+    const parser = new DOMParser();
+    const container = parser.parseFromString(html, 'text/html');
     const base = new URL(baseUrl);
 
     // Resolve img src and srcset (including lazy-loaded images)
@@ -494,7 +786,7 @@
       }
     });
 
-    return container.innerHTML;
+    return container.body.innerHTML;
   }
 
   function resolveUrl(url, base) {

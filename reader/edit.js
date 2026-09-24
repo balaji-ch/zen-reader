@@ -125,7 +125,7 @@ export function makeDeletable() {
 
   const deleteBtn = document.createElement('button');
   deleteBtn.className = 'reader-delete-btn';
-  deleteBtn.innerHTML = '&times;';
+  deleteBtn.textContent = '\u00D7';
   deleteBtn.title = 'Remove element (Shift+click: remove all similar)';
   deleteBtn.style.display = 'none';
   document.body.appendChild(deleteBtn);
@@ -260,6 +260,12 @@ export function makeEditable() {
     if (target.getAttribute('contenteditable') === 'true') return;
 
     const originalHTML = target.innerHTML;
+    const parser = new DOMParser();
+    const originalDoc = parser.parseFromString(originalHTML, 'text/html');
+    const originalFragment = document.createDocumentFragment();
+    while (originalDoc.body.firstChild) {
+      originalFragment.appendChild(originalDoc.body.firstChild);
+    }
 
     target.setAttribute('contenteditable', 'true');
     target.classList.add('reader-editing');
@@ -288,7 +294,8 @@ export function makeEditable() {
     function onKeydown(ev) {
       if (ev.key === 'Escape') {
         ev.preventDefault();
-        target.innerHTML = originalHTML;
+        target.replaceChildren();
+        target.appendChild(originalFragment.cloneNode(true));
         target.blur();
       }
     }
@@ -306,16 +313,22 @@ export function makeImagesResizable() {
   function createResizeBar() {
     resizeBar = document.createElement('div');
     resizeBar.className = 'image-resize-bar';
-    resizeBar.innerHTML = `
-      <span class="resize-bar-label">Resize:</span>
-      <button data-size="25">25%</button>
-      <button data-size="50">50%</button>
-      <button data-size="75">75%</button>
-      <button data-size="100">100%</button>
-      <button data-size="original">Original</button>
-      <span class="resize-bar-divider"></span>
-      <span class="resize-bar-count"></span>
-    `;
+    const label = document.createElement('span');
+    label.className = 'resize-bar-label';
+    label.textContent = 'Resize:';
+    resizeBar.appendChild(label);
+    [25, 50, 75, 100, 'original'].forEach((size) => {
+      const btn = document.createElement('button');
+      btn.dataset.size = String(size);
+      btn.textContent = size === 'original' ? 'Original' : `${size}%`;
+      resizeBar.appendChild(btn);
+    });
+    const divider = document.createElement('span');
+    divider.className = 'resize-bar-divider';
+    resizeBar.appendChild(divider);
+    const count = document.createElement('span');
+    count.className = 'resize-bar-count';
+    resizeBar.appendChild(count);
     resizeBar.style.display = 'none';
     document.body.appendChild(resizeBar);
 

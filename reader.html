@@ -193,44 +193,81 @@
       <h3>PDF Options</h3>
       <div class="dialog-row">
         <label>Margins</label>
-        <div class="margin-presets" id="margin-presets">
-          <button class="margin-preset-btn" data-preset="none">No Margin</button>
-          <button class="margin-preset-btn active" data-preset="minimal">Minimal</button>
-          <button class="margin-preset-btn" data-preset="custom">Custom</button>
+        <div class="margin-radios" id="margin-presets">
+          <label class="radio-label"><input type="radio" name="margin-preset" value="none"> None</label>
+          <label class="radio-label"><input type="radio" name="margin-preset" value="minimal" checked> Minimal</label>
+          <label class="radio-label"><input type="radio" name="margin-preset" value="normal"> Normal</label>
+          <label class="radio-label"><input type="radio" name="margin-preset" value="custom"> Custom</label>
+        </div>
+        <div class="margin-custom-grid" id="margin-custom-row">
+          <div class="margin-dpad" id="margin-dpad">
+            <label class="dpad-label dpad-top">Top
+              <select id="margin-top" disabled>
+                <option value="0">0</option>
+                <option value="5" selected>5</option>
+                <option value="10">10</option>
+                <option value="15">15</option>
+                <option value="20">20</option>
+                <option value="25">25</option>
+                <option value="30">30</option>
+              </select>
+            </label>
+            <label class="dpad-label dpad-left">Left
+              <select id="margin-left" disabled>
+                <option value="0">0</option>
+                <option value="5" selected>5</option>
+                <option value="10">10</option>
+                <option value="15">15</option>
+                <option value="20">20</option>
+                <option value="25">25</option>
+                <option value="30">30</option>
+              </select>
+            </label>
+            <div class="dpad-center" aria-hidden="true">mm</div>
+            <label class="dpad-label dpad-right">Right
+              <select id="margin-right" disabled>
+                <option value="0">0</option>
+                <option value="5" selected>5</option>
+                <option value="10">10</option>
+                <option value="15">15</option>
+                <option value="20">20</option>
+                <option value="25">25</option>
+                <option value="30">30</option>
+              </select>
+            </label>
+            <label class="dpad-label dpad-bottom">Bottom
+              <select id="margin-bottom" disabled>
+                <option value="0">0</option>
+                <option value="5" selected>5</option>
+                <option value="10">10</option>
+                <option value="15">15</option>
+                <option value="20">20</option>
+                <option value="25">25</option>
+                <option value="30">30</option>
+              </select>
+            </label>
+          </div>
         </div>
       </div>
-      <div class="dialog-row margin-custom-row hidden" id="margin-custom-row">
-        <div class="margin-inputs">
-          <div class="margin-input-group">
-            <span class="margin-label">Top</span>
-            <input type="number" id="margin-top" value="15" min="0" max="50" step="1">
-          </div>
-          <div class="margin-input-group">
-            <span class="margin-label">Right</span>
-            <input type="number" id="margin-right" value="15" min="0" max="50" step="1">
-          </div>
-          <div class="margin-input-group">
-            <span class="margin-label">Bottom</span>
-            <input type="number" id="margin-bottom" value="15" min="0" max="50" step="1">
-          </div>
-          <div class="margin-input-group">
-            <span class="margin-label">Left</span>
-            <input type="number" id="margin-left" value="15" min="0" max="50" step="1">
+      <div class="dialog-row dialog-row-split">
+        <div class="dialog-col">
+          <label>Page size</label>
+          <select id="pdf-page-size">
+            <option value="a4" selected>A4</option>
+            <option value="letter">Letter</option>
+            <option value="legal">Legal</option>
+          </select>
+        </div>
+        <div class="dialog-col">
+          <label>Orientation</label>
+          <div class="orientation-radios" id="orientation-presets">
+            <label class="radio-label"><input type="radio" name="pdf-orientation" value="portrait" checked> Portrait</label>
+            <label class="radio-label"><input type="radio" name="pdf-orientation" value="landscape"> Landscape</label>
           </div>
         </div>
       </div>
       <div class="dialog-row">
-        <label>Page size</label>
-        <select id="pdf-page-size">
-          <option value="a4" selected>A4</option>
-          <option value="letter">Letter</option>
-          <option value="legal">Legal</option>
-        </select>
-      </div>
-      <div class="dialog-row">
-        <label class="checkbox-label">
-          <input type="checkbox" id="pdf-toc"> Include Table of Contents
-        </label>
+        <label class="radio-label"><input type="radio" name="pdf-toc" id="pdf-toc" value="with"> Table of Contents</label>
       </div>
       <div class="dialog-actions">
         <button id="pdf-cancel" class="dialog-btn-secondary">Cancel</button>
