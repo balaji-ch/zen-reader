@@ -158,7 +158,53 @@ function renderArticle() {
     ADD_ATTR: ['target'], // keep target="_blank" on links inside articles
   });
 
+  // Fix KaTeX misrendering of plain text before rendering
+  articleBody.querySelectorAll('.katex').forEach(katexEl => {
+    const mathml = katexEl.querySelector('.katex-mathml');
+    const htmlEl = katexEl.querySelector('.katex-html');
+    let replaced = false;
+    if (mathml) {
+      const ann = mathml.querySelector('annotation[encoding="application/x-tex"]');
+      if (ann) {
+        const tex = ann.textContent || '';
+        if (tex.length > 3 && (tex.match(/\s/g) || []).length > 2 && !/\\[a-zA-Z]+\{|\\frac|\\sum|\\int|\\prod|\\begin|\\left|\\right|[=+\-*/^_\[\]]|\d+\s*[+\-*/]\s*\d+/.test(tex)) {
+          const txt = (htmlEl ? htmlEl.textContent : tex).replace(/\s+/g, ' ').trim();
+          if (txt.length > 5) {
+            if (katexEl.parentNode) {
+              katexEl.parentNode.replaceChild(document.createTextNode(txt), katexEl);
+              replaced = true;
+            }
+          }
+        }
+      }
+    }
+    if (!replaced && htmlEl && htmlEl.parentNode) {
+      const txt = htmlEl.textContent || '';
+      if (txt.length > 20 && (txt.match(/\s/g) || []).length > 4 && !/[=+\-*/^_\\\(\)\[\]{}]/.test(txt.replace(/\d+/g, ''))) {
+        const clean = txt.replace(/\s+/g, ' ').trim();
+        if (clean.length > 10) {
+          htmlEl.parentNode.replaceChild(document.createTextNode(clean), htmlEl);
+        }
+      }
+    }
+  });
+
   renderMath();
+  // Final pass to fix any remaining misrendered Katex
+  articleBody.querySelectorAll('.katex').forEach(katexEl => {
+    const htmlEl = katexEl.querySelector('.katex-html');
+    if (htmlEl) {
+      const txt = htmlEl.textContent || '';
+      if (txt.length > 15 && (txt.match(/\s/g) || []).length > 2 && !/[=+\-*/^_\\\(\)\[\]{}]/.test(txt.replace(/\d+/g, '').replace(/[.,;:]/g, ''))) {
+        const clean = txt.replace(/\s+/g, ' ').trim();
+        if (clean.length > 10 && !clean.match(/^[A-Za-z]\s[A-Za-z]\s/)) {
+          if (katexEl.parentNode) {
+            katexEl.parentNode.replaceChild(document.createTextNode(clean), katexEl);
+          }
+        }
+      }
+    }
+  });
   loadRemoteImages();
   constrainDecorativeImages();
   processCodeBlocks();
@@ -185,10 +231,11 @@ function renderMath() {
 
   const text = articleBody.textContent;
   const hasLatex =
-    /\$[^$]+\$/.test(text) ||
+    /\$\$[\s\S]+?\$\$/.test(text) ||
+    /\$[^$\n]{1,200}\$/.test(text) ||
     /\\\([\s\S]+?\\\)/.test(text) ||
     /\\\[[\s\S]+?\\\]/.test(text) ||
-    /\\begin\{/.test(text);
+    /\\begin\{[a-zA-Z]+\}/.test(text);
   if (!hasLatex) return;
 
   articleBody.querySelectorAll('span.zen-math-source').forEach((span) => {
@@ -205,8 +252,8 @@ function renderMath() {
         { left: '\\(', right: '\\)', display: false }
       ],
       throwOnError: false,
-      trust: true,
-      strict: false,
+      trust: false,
+      strict: 'ignore',
       macros: {
         '\\set': '\\{#1\\}',
         '\\R': '\\mathbb{R}',
@@ -218,11 +265,40 @@ function renderMath() {
         '\\argmax': '\\operatorname{arg\\,max}',
         '\\argmin': '\\operatorname{arg\\,min}'
       },
-      ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code', 'annotation', 'annotation-xml']
+      ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code', 'annotation', 'annotation-xml', 'p', 'div', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'],
+      ignoredClasses: ['hljs'],
+      errorColor: '#cc0000'
     });
   } catch (e) {
     console.warn('KaTeX rendering error:', e);
   }
+  
+  // Fix KaTeX that incorrectly rendered plain text (e.g., on Substack)
+  articleBody.querySelectorAll('.katex').forEach(katexEl => {
+    const mathml = katexEl.querySelector('.katex-mathml');
+    if (mathml) {
+      const ann = mathml.querySelector('annotation[encoding="application/x-tex"]');
+      if (ann) {
+        const tex = ann.textContent || '';
+        // If it contains long runs of letters without math operators and looks like plain text
+        if (tex.length > 3 && /[a-zA-Z]{3,}/.test(tex) && !/\\[a-zA-Z]+\{|\^|\_|\\frac|\\sum|\\int|\\begin/.test(tex)) {
+          // This is likely mis-rendered plain text - replace with original text from HTML
+          const htmlEl = katexEl.querySelector('.katex-html');
+          if (htmlEl) {
+            let textContent = htmlEl.textContent.replace(/\s+/g, ' ').trim();
+            if (textContent.length > 2) {
+              const textNode = document.createTextNode(textContent);
+              katexEl.parentNode.replaceChild(textNode, katexEl);
+              return;
+            }
+          }
+          let textContent = tex.replace(/\s+/g, ' ').trim();
+          const textNode = document.createTextNode(textContent);
+          katexEl.parentNode.replaceChild(textNode, katexEl);
+        }
+      }
+    }
+  });
 }
 
 // ===== Load remote images (referrer/hotlink workaround) =====
