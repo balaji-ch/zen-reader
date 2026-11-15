@@ -24,7 +24,7 @@ document.getElementById('btn-extract').addEventListener('click', async () => {
     // Step 2: run extraction in the ISOLATED world (default).
     await chrome.scripting.executeScript({
       target: { tabId: tab.id },
-      files: ['lib/Readability.js', 'content.js']
+      files: ['lib/Readability.js', 'lib/srcset.js', 'content.js']
     });
     setTimeout(() => window.close(), 800);
   } catch (err) {

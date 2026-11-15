@@ -5,5 +5,5 @@ node_modules/
 .DS_Store
 Thumbs.db
 
-# Internal dev/resume notes — kept local, not part of the public repo
-SESSION_NOTES.md
+# Internal dev/resume notes - kept local, not part of the public repo
+SESSION_NOTES*.md

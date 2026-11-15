@@ -323,6 +323,15 @@ function fetchAsBlob(img, src) {
     if (resp && resp.success && resp.dataUrl) {
       img.dataset.blobLoaded = '1';
       img.removeAttribute('srcset');
+      // A <source> inside the same <picture> overrides <img src>. If its
+      // srcset is stale/broken (e.g. an article saved before the comma-URL
+      // fix), the recovered blob would never be shown, so clear it too.
+      const picture = img.closest('picture');
+      if (picture) {
+        picture.querySelectorAll('source[srcset]').forEach((source) => {
+          source.removeAttribute('srcset');
+        });
+      }
       img.setAttribute('src', resp.dataUrl);
     }
   });

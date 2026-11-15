@@ -1,14 +1,14 @@
 {
   "name": "chrome-reader-extension",
-  "version": "3.0.3",
+  "version": "3.0.4",
   "description": "",
   "main": "index.js",
   "directories": {
     "lib": "lib"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "pack": "powershell -Command \"Compress-Archive -Path manifest.json,background.js,content.js,math-grabber.js,popup.html,popup.js,reader.html,reader,css,lib,icons,fonts -DestinationPath 'ZenReader.v3.0.3.zip' -Force\""
+    "test": "node --test",
+    "pack": "powershell -Command \"Compress-Archive -Path manifest.json,background.js,content.js,math-grabber.js,popup.html,popup.js,reader.html,reader,css,lib,icons,fonts -DestinationPath 'ZenReader.v3.0.4.zip' -Force\""
   },
   "keywords": [],
   "author": "",

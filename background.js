@@ -21,10 +21,10 @@ chrome.commands.onCommand.addListener(async (command) => {
       // MAIN-world injection can fail on restricted pages; proceed anyway.
     }
 
-    // Step 2: inject Readability + content.js in ISOLATED world
+    // Step 2: inject Readability + srcset helpers + content.js in ISOLATED world
     await chrome.scripting.executeScript({
       target: { tabId: tab.id },
-      files: ['lib/Readability.js', 'content.js']
+      files: ['lib/Readability.js', 'lib/srcset.js', 'content.js']
     });
   } catch (err) {
     console.warn('ZenReader: extraction via shortcut failed:', err);

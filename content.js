@@ -610,14 +610,7 @@
   }
 
   function pickLargestFromSrcset(srcset) {
-    let bestUrl = null, bestW = -1;
-    srcset.split(',').forEach((part) => {
-      const seg = part.trim().split(/\s+/);
-      const url = seg[0];
-      const w = seg[1] && seg[1].endsWith('w') ? parseInt(seg[1]) : 0;
-      if (url && w >= bestW) { bestW = w; bestUrl = url; }
-    });
-    return bestUrl;
+    return ZenSrcset.pickLargestFromSrcset(srcset);
   }
 
   function preprocessCodeBlocks(doc) {
@@ -799,13 +792,10 @@
   }
 
   function resolveSrcset(srcset, base) {
-    return srcset.split(',').map((entry) => {
-      const parts = entry.trim().split(/\s+/);
-      if (parts[0]) {
-        parts[0] = resolveUrl(parts[0], base);
-      }
-      return parts.join(' ');
-    }).join(', ');
+    // IMPORTANT: delegate to lib/srcset.js. srcset URLs can contain commas
+    // (Substack/Cloudinary/Imgix/Shopify), so splitting on "," corrupts them.
+    // See lib/srcset.js for the spec-style parser.
+    return ZenSrcset.resolveSrcset(srcset, base);
   }
 
 })();
