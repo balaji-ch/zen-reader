@@ -1297,67 +1297,10 @@ body.dark .article-stats {
   font-size: inherit;
 }
 
-/* Prevent KaTeX from breaking up normal text into individual character lines */
-.katex {
-  display: inline !important;
-  font-size: inherit !important;
-  line-height: inherit !important;
-  white-space: normal !important;
-  word-break: normal !important;
-  overflow-wrap: normal !important;
-}
-
-.katex *,
-.katex .katex-html,
-.katex .katex-mathml,
-.katex .base,
-.katex .base > *,
-.katex span,
-.katex .mord,
-.katex .mop,
-.katex .mbin,
-.katex .mrel,
-.katex .mpunct,
-.katex .mspace,
-.katex .strut,
-.katex .pstrut,
-.katex .mathnormal,
-.katex .vlist-t,
-.katex .vlist-r,
-.katex .vlist,
-.katex .sizing,
-.katex .fontsize-ensurer {
-  display: inline !important;
-  white-space: normal !important;
-  word-break: normal !important;
-  overflow-wrap: normal !important;
-  float: none !important;
-  position: static !important;
-  box-sizing: border-box !important;
-  flex-direction: row !important;
-  flex-wrap: nowrap !important;
-  align-items: baseline !important;
-  justify-content: flex-start !important;
-  flex: 0 1 auto !important;
-  width: auto !important;
-  max-width: none !important;
-  min-width: 0 !important;
-  height: auto !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  line-height: inherit !important;
-}
-
-.katex .strut,
-.katex .pstrut {
-  display: none !important;
-  height: 0 !important;
-  width: 0 !important;
-}
-
-.katex-mathml {
-  display: none !important;
-}
+/* KaTeX layout is managed by lib/katex/katex.min.css. Do not flatten .katex
+   internals with display/position overrides: it breaks legitimate math layout
+   and can duplicate/garble rendered equations. Plain-text misrendering is
+   handled by the JS heuristic in reader/core.js renderMath(). */
 
 /* Per-language accent colors (left border only) */
 pre[data-lang="python"], pre[data-lang="py"] { border-left-color: #c8960c; }

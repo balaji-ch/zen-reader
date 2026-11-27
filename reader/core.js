@@ -243,34 +243,60 @@ function renderMath() {
     span.parentNode.replaceChild(textNode, span);
   });
 
+  const katexOptions = {
+    delimiters: [
+      { left: '$$', right: '$$', display: true },
+      { left: '\\[', right: '\\]', display: true },
+      { left: '$', right: '$', display: false },
+      { left: '\\(', right: '\\)', display: false }
+    ],
+    throwOnError: false,
+    trust: false,
+    strict: 'ignore',
+    macros: {
+      '\\set': '\\{#1\\}',
+      '\\R': '\\mathbb{R}',
+      '\\N': '\\mathbb{N}',
+      '\\Z': '\\mathbb{Z}',
+      '\\C': '\\mathbb{C}',
+      '\\norm': '\\|#1\\|',
+      '\\abs': '|#1|',
+      '\\argmax': '\\operatorname{arg\\,max}',
+      '\\argmin': '\\operatorname{arg\\,min}'
+    },
+    ignoredClasses: ['hljs'],
+    errorColor: '#cc0000'
+  };
+
+  // Chrome intentionally keeps p/div/h1-h6 in ignoredTags for the broad pass to
+  // reduce false positives from currency/ordinary $ text in normal prose. Firefox
+  // omits them, which renders math but is riskier on non-math pages.
+  // Targeted pass: only render blocks that actually contain LaTeX delimiters.
+  const blockIgnoredTags = ['script', 'noscript', 'style', 'textarea', 'pre', 'code', 'annotation', 'annotation-xml', 'p', 'div', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'];
+  const inlineMathPattern = /\$\$[\s\S]+?\$\$|\$[^$\n]{1,200}\$|\\\([\s\S]+?\\\)|\\\[[\s\S]+?\\\]|\\begin\{[a-zA-Z]+\}/;
+
   try {
-    renderMathInElement(articleBody, {
-      delimiters: [
-        { left: '$$', right: '$$', display: true },
-        { left: '\\[', right: '\\]', display: true },
-        { left: '$', right: '$', display: false },
-        { left: '\\(', right: '\\)', display: false }
-      ],
-      throwOnError: false,
-      trust: false,
-      strict: 'ignore',
-      macros: {
-        '\\set': '\\{#1\\}',
-        '\\R': '\\mathbb{R}',
-        '\\N': '\\mathbb{N}',
-        '\\Z': '\\mathbb{Z}',
-        '\\C': '\\mathbb{C}',
-        '\\norm': '\\|#1\\|',
-        '\\abs': '|#1|',
-        '\\argmax': '\\operatorname{arg\\,max}',
-        '\\argmin': '\\operatorname{arg\\,min}'
-      },
-      ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code', 'annotation', 'annotation-xml', 'p', 'div', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'],
-      ignoredClasses: ['hljs'],
-      errorColor: '#cc0000'
-    });
+    renderMathInElement(articleBody, { ...katexOptions, ignoredTags: blockIgnoredTags });
   } catch (e) {
     console.warn('KaTeX rendering error:', e);
+  }
+
+  // Second pass: render math inside block tags that were skipped above, but only
+  // when the block still contains raw math delimiters. This fixes NVIDIA-style
+  // articles where inline math lives in plain <p> text ($L$, $H$, $H'$).
+  try {
+    const candidates = articleBody.querySelectorAll('p, li, td, th, blockquote, h1, h2, h3, h4, h5, h6, dt, dd, figcaption');
+    candidates.forEach((el) => {
+      if (el.closest('pre, code, .katex, .no-math')) return;
+      if (el.querySelector('.katex')) return;
+      if (!inlineMathPattern.test(el.textContent || '')) return;
+      renderMathInElement(el, {
+        ...katexOptions,
+        ignoredTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code', 'annotation', 'annotation-xml']
+      });
+    });
+  } catch (e) {
+    console.warn('KaTeX targeted rendering error:', e);
   }
   
   // Fix KaTeX that incorrectly rendered plain text (e.g., on Substack)
